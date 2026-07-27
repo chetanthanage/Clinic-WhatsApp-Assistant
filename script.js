@@ -145,6 +145,116 @@
   }
 
   /* ======================================================================
+     CUSTOM TIME PICKER (Hour / Minute / AM-PM)
+     Native <input type="time"> silently follows the OS locale for
+     12-hour vs 24-hour display, so on many devices no AM/PM control ever
+     shows up. This custom control always exposes an explicit AM/PM choice
+     and stores the result as a 24-hour "HH:MM" string in a hidden input,
+     so the rest of the app's logic (validation, sorting, message
+     generation) keeps working unchanged.
+     ====================================================================== */
+
+  function populateHourOptions(selectEl) {
+    for (let h = 1; h <= 12; h++) {
+      const opt = document.createElement('option');
+      opt.value = String(h);
+      opt.textContent = pad(h);
+      selectEl.appendChild(opt);
+    }
+  }
+
+  function populateMinuteOptions(selectEl) {
+    for (let m = 0; m < 60; m += 5) {
+      const opt = document.createElement('option');
+      opt.value = String(m);
+      opt.textContent = pad(m);
+      selectEl.appendChild(opt);
+    }
+  }
+
+  /**
+   * Wires up a Hour/Minute/AM-PM control and keeps a hidden 24hr "HH:MM"
+   * input in sync with it.
+   * @returns {{ setValue: Function, clear: Function, setInvalid: Function }}
+   */
+  function createTimePicker({ hourEl, minuteEl, amBtn, pmBtn, hiddenEl, wrapperEl, onChange }) {
+    populateHourOptions(hourEl);
+    populateMinuteOptions(minuteEl);
+
+    let meridiem = null;
+
+    function syncHidden() {
+      const h = hourEl.value;
+      const m = minuteEl.value;
+      if (h && m !== '' && meridiem) {
+        let hour24 = parseInt(h, 10) % 12;
+        if (meridiem === 'PM') hour24 += 12;
+        hiddenEl.value = `${pad(hour24)}:${pad(parseInt(m, 10))}`;
+      } else {
+        hiddenEl.value = '';
+      }
+      if (typeof onChange === 'function') onChange();
+    }
+
+    function setMeridiem(value) {
+      meridiem = value;
+      amBtn.classList.toggle('time-picker__meridiem-btn--active', value === 'AM');
+      pmBtn.classList.toggle('time-picker__meridiem-btn--active', value === 'PM');
+      syncHidden();
+    }
+
+    hourEl.addEventListener('change', syncHidden);
+    minuteEl.addEventListener('change', syncHidden);
+    amBtn.addEventListener('click', () => setMeridiem('AM'));
+    pmBtn.addEventListener('click', () => setMeridiem('PM'));
+
+    /** Sets the picker from a 24hr "HH:MM" string (or '' to clear it). */
+    function setValue(hhmm) {
+      if (!hhmm) {
+        hourEl.value = '';
+        minuteEl.value = '';
+        meridiem = null;
+        amBtn.classList.remove('time-picker__meridiem-btn--active');
+        pmBtn.classList.remove('time-picker__meridiem-btn--active');
+        hiddenEl.value = '';
+        return;
+      }
+      const [hStr, mStr] = hhmm.split(':');
+      const h = parseInt(hStr, 10);
+      const m = parseInt(mStr, 10);
+      const mer = h >= 12 ? 'PM' : 'AM';
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+
+      // If the stored minute isn't one of the 5-minute steps, add it so
+      // previously saved exact times (e.g. 06:47) still display correctly.
+      if (!Array.from(minuteEl.options).some((o) => o.value === String(m))) {
+        const opt = document.createElement('option');
+        opt.value = String(m);
+        opt.textContent = pad(m);
+        minuteEl.appendChild(opt);
+      }
+
+      hourEl.value = String(h12);
+      minuteEl.value = String(m);
+      meridiem = mer;
+      amBtn.classList.toggle('time-picker__meridiem-btn--active', mer === 'AM');
+      pmBtn.classList.toggle('time-picker__meridiem-btn--active', mer === 'PM');
+      hiddenEl.value = `${pad(h)}:${pad(m)}`;
+    }
+
+    function clear() {
+      setValue('');
+    }
+
+    function setInvalid(show) {
+      wrapperEl.classList.toggle('time-picker--invalid', show);
+    }
+
+    return { setValue, clear, setInvalid };
+  }
+
+  /* ======================================================================
      LIVE HEADER CLOCK
      ====================================================================== */
 
@@ -428,7 +538,7 @@
   const modalOverlay = document.getElementById('modalOverlay');
   const modalTitle = document.getElementById('modalTitle');
   const modalPatientName = document.getElementById('modalPatientName');
-  const modalApptTime = document.getElementById('modalApptTime');
+  const modalApptTime = document.getElementById('modalApptTime'); // hidden 24hr "HH:MM" value
   const modalMobile = document.getElementById('modalMobile');
   const modalPatientNameError = document.getElementById('modalPatientNameError');
   const modalApptTimeError = document.getElementById('modalApptTimeError');
@@ -436,14 +546,24 @@
   const modalCancelBtn = document.getElementById('modalCancelBtn');
   const modalSaveBtn = document.getElementById('modalSaveBtn');
 
+  const modalApptTimePicker = createTimePicker({
+    hourEl: document.getElementById('modalApptTimeHour'),
+    minuteEl: document.getElementById('modalApptTimeMinute'),
+    amBtn: document.getElementById('modalApptTimeAM'),
+    pmBtn: document.getElementById('modalApptTimePM'),
+    hiddenEl: modalApptTime,
+    wrapperEl: document.getElementById('modalApptTimePicker')
+  });
+
   function openAddModal(listType) {
     activeModalList = listType;
     modalTitle.textContent = listType === 'today' ? 'Add Appointment — Today' : 'Add Appointment — Tomorrow';
     modalPatientName.value = '';
-    modalApptTime.value = '';
+    modalApptTimePicker.clear();
     modalMobile.value = '';
     clearFieldError(modalPatientName, modalPatientNameError);
-    clearFieldError(modalApptTime, modalApptTimeError);
+    markFieldErrorVisible(modalApptTimeError, false);
+    modalApptTimePicker.setInvalid(false);
     clearFieldError(modalMobile, modalMobileError);
     modalOverlay.hidden = false;
     setTimeout(() => modalPatientName.focus(), 50);
@@ -460,6 +580,10 @@
   }
   function clearFieldError(inputEl, errorEl) {
     setFieldError(inputEl, errorEl, false);
+  }
+  /** Toggles just the error-message visibility, for fields with no plain input element (e.g. the time picker). */
+  function markFieldErrorVisible(errorEl, show) {
+    errorEl.parentElement.classList.toggle('field--invalid', show);
   }
 
   modalMobile.addEventListener('input', () => {
@@ -483,7 +607,8 @@
     const mobileValid = isValidMobile(mobile);
 
     setFieldError(modalPatientName, modalPatientNameError, !nameValid);
-    setFieldError(modalApptTime, modalApptTimeError, !timeValid);
+    markFieldErrorVisible(modalApptTimeError, !timeValid);
+    modalApptTimePicker.setInvalid(!timeValid);
     setFieldError(modalMobile, modalMobileError, !mobileValid);
 
     if (!nameValid || !timeValid || !mobileValid) return;
@@ -613,7 +738,7 @@
   const patientName = document.getElementById('patientName');
   const patientMobile = document.getElementById('patientMobile');
   const apptDate = document.getElementById('apptDate');
-  const apptTime = document.getElementById('apptTime');
+  const apptTime = document.getElementById('apptTime'); // hidden 24hr "HH:MM" value
 
   const patientNameError = document.getElementById('patientNameError');
   const patientMobileError = document.getElementById('patientMobileError');
@@ -623,6 +748,16 @@
   const appointmentPreviewEl = document.getElementById('appointmentPreview');
   const appointmentTimestampEl = document.getElementById('appointmentTimestamp');
   const waPatientHeaderName = document.getElementById('waPatientHeaderName');
+
+  const apptTimePicker = createTimePicker({
+    hourEl: document.getElementById('apptTimeHour'),
+    minuteEl: document.getElementById('apptTimeMinute'),
+    amBtn: document.getElementById('apptTimeAM'),
+    pmBtn: document.getElementById('apptTimePM'),
+    hiddenEl: apptTime,
+    wrapperEl: document.getElementById('apptTimePicker'),
+    onChange: () => updateAppointmentPreview()
+  });
 
   function generateAppointmentMessage() {
     const title = titleSelect.value;
@@ -678,13 +813,13 @@
       patientName.value = data.name || '';
       patientMobile.value = data.mobile || '';
       apptDate.value = data.date || '';
-      apptTime.value = data.time || '';
+      apptTimePicker.setValue(data.time || '');
     } catch (e) {
       /* ignore corrupt storage */
     }
   }
 
-  [titleSelect, patientName, patientMobile, apptDate, apptTime].forEach((el) => {
+  [titleSelect, patientName, patientMobile, apptDate].forEach((el) => {
     el.addEventListener('input', updateAppointmentPreview);
     el.addEventListener('change', updateAppointmentPreview);
   });
@@ -702,7 +837,8 @@
     setFieldError(patientName, patientNameError, !nameValid);
     setFieldError(patientMobile, patientMobileError, !mobileValid);
     setFieldError(apptDate, apptDateError, !dateValid);
-    setFieldError(apptTime, apptTimeError, !timeValid);
+    markFieldErrorVisible(apptTimeError, !timeValid);
+    apptTimePicker.setInvalid(!timeValid);
 
     return nameValid && mobileValid && dateValid && timeValid;
   }
@@ -717,8 +853,9 @@
       patientName.value = '';
       patientMobile.value = '';
       apptDate.value = '';
-      apptTime.value = '';
-      [patientName, patientMobile, apptDate, apptTime].forEach((el) => el.classList.remove('field__input--invalid'));
+      apptTimePicker.clear();
+      apptTimePicker.setInvalid(false);
+      [patientName, patientMobile, apptDate].forEach((el) => el.classList.remove('field__input--invalid'));
       [patientNameError, patientMobileError, apptDateError, apptTimeError].forEach((el) =>
         el.parentElement.classList.remove('field--invalid')
       );

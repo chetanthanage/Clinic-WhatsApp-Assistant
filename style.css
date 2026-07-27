@@ -625,6 +625,66 @@ button{ cursor:pointer; }
 }
 .field--invalid .field__error{ display:block; }
 
+/* ---------- Custom time picker (Hour / Minute / AM-PM) ---------- */
+.time-picker{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.time-picker:focus-within{
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+}
+.time-picker--invalid{
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+.time-picker__select{
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 7px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.time-picker__select:focus-visible{ outline-offset: 1px; }
+.time-picker__colon{
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+.time-picker__meridiem{
+  display:flex;
+  gap: 4px;
+  margin-left: auto;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.time-picker__meridiem-btn{
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.time-picker__meridiem-btn:hover{ color: var(--color-text); }
+.time-picker__meridiem-btn--active{
+  background: var(--grad-primary);
+  color: #fff;
+  box-shadow: var(--shadow-glow-purple);
+}
+
 /* ---------- Modal ---------- */
 .modal-overlay{
   position: fixed;

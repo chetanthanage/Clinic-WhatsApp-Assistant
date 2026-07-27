@@ -204,8 +204,21 @@
             </div>
 
             <div class="field">
-              <label class="field__label" for="apptTime">Appointment Time</label>
-              <input class="field__input" type="time" id="apptTime">
+              <label class="field__label" id="apptTimeLabel">Appointment Time</label>
+              <div class="time-picker" id="apptTimePicker">
+                <select class="time-picker__select" id="apptTimeHour" aria-label="Hour">
+                  <option value="">HH</option>
+                </select>
+                <span class="time-picker__colon">:</span>
+                <select class="time-picker__select" id="apptTimeMinute" aria-label="Minute">
+                  <option value="">MM</option>
+                </select>
+                <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
+                  <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="apptTimeAM">AM</button>
+                  <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="apptTimePM">PM</button>
+                </div>
+              </div>
+              <input type="hidden" id="apptTime">
               <span class="field__error" id="apptTimeError">Appointment time is required.</span>
             </div>
 
@@ -275,8 +288,21 @@
     </div>
 
     <div class="field">
-      <label class="field__label" for="modalApptTime">Appointment Time</label>
-      <input class="field__input" type="time" id="modalApptTime">
+      <label class="field__label" id="modalApptTimeLabel">Appointment Time</label>
+      <div class="time-picker" id="modalApptTimePicker">
+        <select class="time-picker__select" id="modalApptTimeHour" aria-label="Hour">
+          <option value="">HH</option>
+        </select>
+        <span class="time-picker__colon">:</span>
+        <select class="time-picker__select" id="modalApptTimeMinute" aria-label="Minute">
+          <option value="">MM</option>
+        </select>
+        <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
+          <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="modalApptTimeAM">AM</button>
+          <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="modalApptTimePM">PM</button>
+        </div>
+      </div>
+      <input type="hidden" id="modalApptTime">
       <span class="field__error" id="modalApptTimeError">Appointment time is required.</span>
     </div>
 
