@@ -404,6 +404,8 @@ button{ cursor:pointer; }
 .btn--cyan{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
 
 .btn--sm{ padding: 9px 16px; font-size: 0.8rem; }
+.btn--lg{ padding: 17px 28px; font-size: 1rem; gap: 10px; }
+.btn--lg .material-symbols-rounded{ font-size: 22px; }
 .btn--full{ width: 100%; margin-bottom: 16px; }
 .btn:disabled{ opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
 
@@ -536,6 +538,17 @@ button{ cursor:pointer; }
 .appt-card__action--edit{ background: var(--grad-secondary); box-shadow: var(--shadow-glow-blue); }
 .appt-card__action--delete{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
 .appt-card__action--whatsapp{ background: var(--grad-success); box-shadow: var(--shadow-glow-green); }
+.appt-card__action--reschedule{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
+
+.appt-card__status-note{
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.appt-card__status-note .material-symbols-rounded{ font-size: 14px; }
 
 /* Chips: type label + "Today" badge */
 .chip{
@@ -707,6 +720,16 @@ button{ cursor:pointer; }
   border-top: 1px solid var(--color-border);
 }
 .field--grow{ flex: 2; min-width: 200px; }
+
+/* ---------- Export & Print action card ---------- */
+.section-card--actions{ padding-bottom: 26px; }
+.action-btn-row{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
+}
+.action-btn-row .btn{ flex: 1; min-width: 220px; }
 
 /* ---------- WhatsApp-style preview window ---------- */
 .preview-card__title{
@@ -957,6 +980,23 @@ button{ cursor:pointer; }
   color: var(--color-warning);
 }
 
+/* ---------- Cancel confirmation / Reschedule patient info block ---------- */
+.cancel-confirm__patient{
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 14px 0;
+  display:flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.cancel-confirm__name{ font-weight: 700; font-size: 0.95rem; }
+.cancel-confirm__datetime{ font-size: 0.85rem; color: var(--color-text-muted); font-weight: 600; }
+.cancel-confirm__reason-field{ text-align: left; margin-top: 4px; }
+.cancel-confirm__other-field{ text-align: left; margin-top: 14px; }
+
 /* ---------- Toast ---------- */
 .toast{
   position: fixed;
@@ -979,6 +1019,67 @@ button{ cursor:pointer; }
 .toast--visible{
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* ---------- Undo toast (cancel / reschedule actions) ---------- */
+.undo-toast{
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 20px);
+  display:flex;
+  align-items:center;
+  gap: 14px;
+  padding: 12px 12px 12px 22px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+  z-index: 210;
+  max-width: 92vw;
+  overflow: hidden;
+}
+.undo-toast--visible{
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.undo-toast__text{
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.undo-toast__btn{
+  background: var(--grad-primary);
+  color: #fff;
+  border: none;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-glow-purple);
+  white-space: nowrap;
+  transition: transform var(--transition), filter var(--transition);
+}
+.undo-toast__btn:hover{ transform: translateY(-1px); filter: brightness(1.06); }
+.undo-toast__btn:active{ transform: scale(0.96); }
+.undo-toast__bar{
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--grad-primary);
+  transform-origin: left;
+}
+.undo-toast__bar--running{
+  animation: undoCountdown 20s linear forwards;
+}
+@keyframes undoCountdown{
+  from{ transform: scaleX(1); }
+  to{ transform: scaleX(0); }
 }
 
 /* ---------- Loading overlay ---------- */
@@ -1007,31 +1108,53 @@ button{ cursor:pointer; }
 @keyframes spin{ to{ transform: rotate(360deg); } }
 .loading-overlay__text{ font-weight: 700; font-size: 0.95rem; }
 
-/* ---------- Printable daily schedule ---------- */
-.print-schedule{ display: none; }
+/* ---------- Printable schedule (used for both @media print and the on-screen Print Preview modal) ---------- */
+.print-schedule{
+  display: none;
+  color: #111;
+  background: #fff;
+}
+.print-schedule__header{ margin-bottom: 16px; }
+.print-schedule__clinic{ margin: 0 0 4px; font-size: 1rem; font-weight: 800; }
+.print-schedule h1{ font-size: 1.35rem; margin: 0 0 4px; font-family: var(--font-display); }
+.print-schedule__range{ margin: 0 0 2px; font-size: 0.9rem; font-weight: 700; color: #333; }
+.print-schedule__generated{ margin: 0; font-size: 0.76rem; color: #666; }
+.print-schedule table{ width: 100%; min-width: 600px; border-collapse: collapse; }
+.print-schedule th, .print-schedule td{
+  border: 1px solid #999;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.82rem;
+}
+.print-schedule th{ background: #eee; font-weight: 800; }
+.print-schedule tbody tr:nth-child(even){ background: #f5f5f5; }
+.print-schedule__footer{ margin: 14px 0 0; font-size: 0.72rem; color: #777; text-align: center; }
+
+/* On-screen Print Preview: same markup/classes, forced visible inside the modal */
+.print-schedule--preview{
+  display: block;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #ddd;
+  max-height: 62vh;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.print-preview-frame{ margin-top: 4px; }
 
 @media print{
+  @page{ size: A4 portrait; margin: 14mm 12mm; }
   body *{ visibility: hidden; }
-  .print-schedule, .print-schedule *{ visibility: visible; }
-  .print-schedule{
+  .print-schedule#printSchedule, .print-schedule#printSchedule *{ visibility: visible; }
+  .print-schedule#printSchedule{
     display: block;
     position: absolute;
     top: 0; left: 0;
     width: 100%;
-    padding: 24px;
-    color: #000;
-    background: #fff;
+    padding: 0;
   }
-  .print-schedule h1{ font-size: 1.4rem; margin-bottom: 2px; }
-  .print-schedule p{ margin: 0 0 18px; color: #444; }
-  .print-schedule table{ width: 100%; border-collapse: collapse; }
-  .print-schedule th, .print-schedule td{
-    border: 1px solid #999;
-    padding: 8px 10px;
-    text-align: left;
-    font-size: 0.85rem;
-  }
-  .print-schedule th{ background: #eee; }
+  .print-schedule thead{ display: table-header-group; } /* repeats the header row on every printed page */
+  .print-schedule tr{ page-break-inside: avoid; }
 }
 
 /* ---------- Utility ---------- */

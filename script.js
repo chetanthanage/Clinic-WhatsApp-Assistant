@@ -43,6 +43,15 @@
     completed: { label: 'Completed', color: 'grey' }
   };
 
+  // Lifecycle status -> display label (independent of appointment "type"/category)
+  const STATUS_META = {
+    scheduled: { label: 'Scheduled' },
+    confirmed: { label: 'Confirmed' },
+    cancelled: { label: 'Cancelled' },
+    rescheduled: { label: 'Rescheduled' },
+    completed: { label: 'Completed' }
+  };
+
   /* ======================================================================
      GENERAL UTILITIES
      ====================================================================== */
@@ -204,12 +213,23 @@
         return list[idx];
       },
 
+      /** Fully overwrites a record (used by Undo, so stale fields from a
+       *  cancelled/rescheduled state don't linger after restoring). */
+      replace(id, record) {
+        const list = _readAll();
+        const idx = list.findIndex((a) => a.id === id);
+        if (idx === -1) return null;
+        list[idx] = Object.assign({}, record, { id });
+        _writeAll(list);
+        return list[idx];
+      },
+
       remove(id) {
         _writeAll(_readAll().filter((a) => a.id !== id));
       },
 
       /** Filters + sorts appointments. All options are optional. */
-      query({ search, date, type, sort } = {}) {
+      query({ search, date, type, status, sort } = {}) {
         let list = _readAll();
 
         if (search) {
@@ -221,6 +241,9 @@
         }
         if (type && type !== 'all') {
           list = list.filter((a) => a.type === type);
+        }
+        if (status && status !== 'all') {
+          list = list.filter((a) => (a.status || 'scheduled') === status);
         }
 
         list.sort((a, b) => {
@@ -306,6 +329,62 @@
       toastEl.classList.remove('toast--visible');
     }, 2200);
   }
+
+  /* ======================================================================
+     UNDO TOAST — shown after Cancel / Reschedule actions for 20 seconds
+     ====================================================================== */
+
+  const undoToastEl = document.getElementById('undoToast');
+  const undoToastTextEl = document.getElementById('undoToastText');
+  const undoToastBarEl = document.getElementById('undoToastBar');
+  const undoBtn = document.getElementById('undoBtn');
+
+  let pendingUndo = null; // { kind: 'delete' | 'replace', apptId, snapshot?, timeoutId }
+
+  /**
+   * Shows the Undo bar for 20 seconds. `kind` is 'delete' (the action created
+   * a brand-new record that should simply be removed) or 'replace' (restore
+   * the full previous record via DataStore.replace, avoiding stale fields).
+   */
+  function scheduleUndo(message, kind, apptId, snapshot) {
+    if (pendingUndo && pendingUndo.timeoutId) clearTimeout(pendingUndo.timeoutId);
+
+    undoToastTextEl.textContent = message;
+    undoToastEl.hidden = false;
+    // Restart the countdown-bar animation.
+    undoToastBarEl.classList.remove('undo-toast__bar--running');
+    void undoToastBarEl.offsetWidth; // force reflow so the animation restarts
+    undoToastBarEl.classList.add('undo-toast__bar--running');
+
+    requestAnimationFrame(() => undoToastEl.classList.add('undo-toast--visible'));
+
+    pendingUndo = { kind, apptId, snapshot };
+    pendingUndo.timeoutId = setTimeout(hideUndoToast, 20000);
+  }
+
+  function hideUndoToast() {
+    undoToastEl.classList.remove('undo-toast--visible');
+    setTimeout(() => { undoToastEl.hidden = true; }, 220);
+    pendingUndo = null;
+  }
+
+  undoBtn.addEventListener('click', () => {
+    if (!pendingUndo) return;
+    clearTimeout(pendingUndo.timeoutId);
+    const { kind, apptId, snapshot } = pendingUndo;
+
+    if (kind === 'delete') {
+      DataStore.remove(apptId);
+    } else if (kind === 'replace' && snapshot) {
+      DataStore.replace(apptId, snapshot);
+    }
+
+    pendingUndo = null;
+    hideUndoToast();
+    refreshEverything();
+    if (!dayModalOverlay.hidden) renderDayModalList();
+    showToast('Action undone.');
+  });
 
   /* ======================================================================
      CLIPBOARD
@@ -673,6 +752,52 @@
   }
 
   /* ======================================================================
+     CANCELLATION / RESCHEDULE WHATSAPP MESSAGES
+     ====================================================================== */
+
+  function generateCancellationMessage(appt, reason) {
+    return (
+      `🏥 Appointment Cancellation\n\n` +
+      `Dear ${appt.title} ${appt.name},\n\n` +
+      `We regret to inform you that your counselling appointment with ${DOCTOR_NAME} scheduled for:\n\n` +
+      `📅 Date: ${formatDateInputValue(appt.date)}\n` +
+      `🕒 Time: ${formatTime12h(appt.time)}\n\n` +
+      `has been cancelled.\n\n` +
+      `Reason:\n${reason}\n\n` +
+      `We sincerely apologise for any inconvenience caused.\n\n` +
+      `If you would like to book another appointment, please reply to this message or contact us. We will be happy to assist you with a new appointment.\n\n` +
+      `Thank you for your understanding and cooperation.\n\n` +
+      `With regards,\n\n` +
+      `Chetan Thanage\n` +
+      `Reception Desk\n` +
+      `Dr. Rohini K. Patole Clinic`
+    );
+  }
+
+  function generateRescheduleMessage(appt, oldDate, oldTime, newDate, newTime) {
+    return (
+      `🏥 Appointment Rescheduled\n\n` +
+      `Dear ${appt.title} ${appt.name},\n\n` +
+      `Your counselling appointment with ${DOCTOR_NAME} has been rescheduled.\n\n` +
+      `Previous Appointment\n\n` +
+      `📅 ${formatDateInputValue(oldDate)}\n` +
+      `🕒 ${formatTime12h(oldTime)}\n\n` +
+      `New Appointment\n\n` +
+      `📅 ${formatDateInputValue(newDate)}\n` +
+      `🕒 ${formatTime12h(newTime)}\n\n` +
+      `📍 Clinic Location:\n${CLINIC_LOCATION_URL}\n\n` +
+      `Kindly arrive 5 minutes before your scheduled appointment.\n\n` +
+      `Thank you for your understanding and cooperation.\n\n` +
+      `We look forward to seeing you.\n\n` +
+      `With regards,\n\n` +
+      `Chetan Thanage\n` +
+      `Reception Desk\n` +
+      `Dr. Rohini K. Patole Clinic`
+    );
+  }
+
+
+  /* ======================================================================
      SHARED APPOINTMENT CARD RENDERER
      Used by the Day Detail modal, Doctor Reminder lists, and All
      Appointments list, so every view stays visually and behaviourally
@@ -735,6 +860,23 @@
       info.appendChild(notesEl);
     }
 
+    const status = appt.status || 'scheduled';
+    if (status === 'cancelled' && appt.cancellationReason) {
+      const reasonEl = document.createElement('span');
+      reasonEl.className = 'appt-card__status-note';
+      reasonEl.innerHTML = '<span class="material-symbols-rounded">event_busy</span>Reason: ' + escapeHtml(appt.cancellationReason);
+      info.appendChild(reasonEl);
+    }
+    if (status === 'rescheduled' && Array.isArray(appt.history) && appt.history.length > 0) {
+      const prev = appt.history[appt.history.length - 1];
+      const rescheduleEl = document.createElement('span');
+      rescheduleEl.className = 'appt-card__status-note';
+      rescheduleEl.innerHTML =
+        '<span class="material-symbols-rounded">event_repeat</span>Rescheduled from ' +
+        formatDateInputValue(prev.date) + ' · ' + formatTime12h(prev.time);
+      info.appendChild(rescheduleEl);
+    }
+
     card.appendChild(avatar);
     card.appendChild(info);
 
@@ -752,6 +894,16 @@
       waBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         openWhatsApp(appt.mobile, generateAppointmentMessage(appt));
+      });
+
+      const rescheduleBtn = document.createElement('button');
+      rescheduleBtn.className = 'appt-card__action appt-card__action--reschedule';
+      rescheduleBtn.type = 'button';
+      rescheduleBtn.setAttribute('aria-label', `Reschedule appointment for ${appt.name}`);
+      rescheduleBtn.innerHTML = '<span class="material-symbols-rounded">event_repeat</span>';
+      rescheduleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openRescheduleModal(appt);
       });
 
       const editBtn = document.createElement('button');
@@ -775,6 +927,9 @@
       });
 
       row.appendChild(waBtn);
+      if ((appt.status || 'scheduled') !== 'cancelled') {
+        row.appendChild(rescheduleBtn);
+      }
       row.appendChild(editBtn);
       row.appendChild(deleteBtn);
       actions.appendChild(row);
@@ -935,7 +1090,11 @@
     }
   }
 
-  dayModalAddBtn.addEventListener('click', () => openApptModal({ mode: 'add', date: activeDayIso }));
+  dayModalAddBtn.addEventListener('click', () => {
+    const dateForNewAppt = activeDayIso;
+    closeDayModal();
+    openApptModal({ mode: 'add', date: dateForNewAppt });
+  });
   dayModalCloseBtn.addEventListener('click', closeDayModal);
   dayModalOverlay.addEventListener('click', (e) => {
     if (e.target === dayModalOverlay) closeDayModal();
@@ -971,11 +1130,15 @@
   });
 
   let apptModalMode = 'add';
+  let apptModalOriginalType = null;
+  let apptModalOriginalStatus = null;
 
   function openApptModal({ mode, date, appt }) {
     apptModalMode = mode;
     apptModalIdHidden.value = appt ? appt.id : '';
     apptModalTitleEl.textContent = mode === 'edit' ? 'Edit Appointment' : 'Add Appointment';
+    apptModalOriginalType = appt ? appt.type : null;
+    apptModalOriginalStatus = appt ? (appt.status || 'scheduled') : null;
 
     const targetDate = appt ? appt.date : date;
     apptModalDateHidden.value = targetDate;
@@ -1016,6 +1179,7 @@
     const name = apptModalNameInput.value.trim();
     const mobile = apptModalMobileInput.value.trim();
     const time = document.getElementById('apptModalTime').value;
+    const type = apptModalTypeSelect.value;
 
     const nameValid = name.length > 0;
     const mobileValid = isValidMobile(mobile);
@@ -1034,14 +1198,55 @@
       mobile,
       date: apptModalDateHidden.value,
       time,
-      type: apptModalTypeSelect.value,
+      type,
       notes: apptModalNotesInput.value.trim()
     };
 
+    // Selecting "Cancelled" as the type is the trigger for the full
+    // cancellation workflow (confirmation + required reason + WhatsApp
+    // notice) — but only when it's a genuinely new cancellation, not when
+    // re-saving an appointment that was already cancelled.
+    const isNewCancellation = type === 'cancelled' && apptModalOriginalStatus !== 'cancelled';
+
+    if (isNewCancellation) {
+      openCancelConfirmDialog({
+        name, date: data.date, time,
+        onConfirm: (reason) => {
+          const finalData = Object.assign({}, data, {
+            status: 'cancelled',
+            cancelledAt: new Date().toISOString(),
+            cancellationReason: reason
+          });
+
+          if (apptModalMode === 'edit' && apptModalIdHidden.value) {
+            const snapshot = DataStore.getById(apptModalIdHidden.value);
+            DataStore.update(apptModalIdHidden.value, finalData);
+            closeApptModal();
+            refreshEverything();
+            if (!dayModalOverlay.hidden) renderDayModalList();
+            openWhatsApp(mobile, generateCancellationMessage(finalData, reason));
+            scheduleUndo('Appointment cancelled successfully.', 'replace', apptModalIdHidden.value, snapshot);
+          } else {
+            const created = DataStore.add(finalData);
+            closeApptModal();
+            refreshEverything();
+            if (!dayModalOverlay.hidden) renderDayModalList();
+            openWhatsApp(mobile, generateCancellationMessage(finalData, reason));
+            scheduleUndo('Appointment cancelled successfully.', 'delete', created.id);
+          }
+        }
+      });
+      return;
+    }
+
     if (apptModalMode === 'edit' && apptModalIdHidden.value) {
+      // Preserve the existing lifecycle status unless the type change implies
+      // a new one (e.g. marking the type as Completed).
+      data.status = type === 'completed' ? 'completed' : apptModalOriginalStatus;
       DataStore.update(apptModalIdHidden.value, data);
       showToast('Appointment updated.');
     } else {
+      data.status = type === 'completed' ? 'completed' : 'scheduled';
       DataStore.add(data);
       showToast('Appointment added.');
     }
@@ -1049,6 +1254,170 @@
     closeApptModal();
     refreshEverything();
     if (!dayModalOverlay.hidden) renderDayModalList();
+  });
+
+  /* ======================================================================
+     CANCEL APPOINTMENT — CONFIRMATION DIALOG
+     ====================================================================== */
+
+  const cancelConfirmOverlay = document.getElementById('cancelConfirmOverlay');
+  const cancelConfirmNameEl = document.getElementById('cancelConfirmName');
+  const cancelConfirmDateTimeEl = document.getElementById('cancelConfirmDateTime');
+  const cancelReasonSelect = document.getElementById('cancelReasonSelect');
+  const cancelReasonError = document.getElementById('cancelReasonError');
+  const cancelReasonOtherField = document.getElementById('cancelReasonOtherField');
+  const cancelReasonOtherInput = document.getElementById('cancelReasonOther');
+  const cancelReasonOtherError = document.getElementById('cancelReasonOtherError');
+  const cancelConfirmKeepBtn = document.getElementById('cancelConfirmKeepBtn');
+  const cancelConfirmProceedBtn = document.getElementById('cancelConfirmProceedBtn');
+
+  let pendingCancelConfirm = null; // the onConfirm callback for the appointment being cancelled
+
+  function openCancelConfirmDialog({ name, date, time, onConfirm }) {
+    cancelConfirmNameEl.textContent = name;
+    cancelConfirmDateTimeEl.textContent = `${formatDateInputValue(date)} · ${formatTime12h(time)}`;
+    cancelReasonSelect.value = '';
+    cancelReasonOtherInput.value = '';
+    cancelReasonOtherField.hidden = true;
+    clearFieldError(cancelReasonSelect, cancelReasonError);
+    clearFieldError(cancelReasonOtherInput, cancelReasonOtherError);
+    pendingCancelConfirm = onConfirm;
+    cancelConfirmOverlay.hidden = false;
+  }
+
+  function closeCancelConfirmDialog() {
+    cancelConfirmOverlay.hidden = true;
+    pendingCancelConfirm = null;
+  }
+
+  cancelReasonSelect.addEventListener('change', () => {
+    cancelReasonOtherField.hidden = cancelReasonSelect.value !== 'Other';
+  });
+
+  cancelConfirmKeepBtn.addEventListener('click', closeCancelConfirmDialog);
+  cancelConfirmOverlay.addEventListener('click', (e) => {
+    if (e.target === cancelConfirmOverlay) closeCancelConfirmDialog();
+  });
+
+  cancelConfirmProceedBtn.addEventListener('click', () => {
+    const reasonChoice = cancelReasonSelect.value;
+    const reasonValid = reasonChoice.length > 0;
+    setFieldError(cancelReasonSelect, cancelReasonError, !reasonValid);
+    if (!reasonValid) return;
+
+    let finalReason = reasonChoice;
+    if (reasonChoice === 'Other') {
+      const customReason = cancelReasonOtherInput.value.trim();
+      const otherValid = customReason.length > 0;
+      setFieldError(cancelReasonOtherInput, cancelReasonOtherError, !otherValid);
+      if (!otherValid) return;
+      finalReason = customReason;
+    }
+
+    const callback = pendingCancelConfirm;
+    closeCancelConfirmDialog();
+    if (typeof callback === 'function') callback(finalReason);
+  });
+
+  /* ======================================================================
+     RESCHEDULE APPOINTMENT MODAL
+     ====================================================================== */
+
+  const rescheduleModalOverlay = document.getElementById('rescheduleModalOverlay');
+  const rescheduleModalNameEl = document.getElementById('rescheduleModalName');
+  const rescheduleModalCurrentEl = document.getElementById('rescheduleModalCurrent');
+  const rescheduleModalIdHidden = document.getElementById('rescheduleModalId');
+  const rescheduleDateInput = document.getElementById('rescheduleDate');
+  const rescheduleDateError = document.getElementById('rescheduleDateError');
+  const rescheduleTimeError = document.getElementById('rescheduleTimeError');
+  const rescheduleReasonSelect = document.getElementById('rescheduleReasonSelect');
+  const rescheduleReasonOtherField = document.getElementById('rescheduleReasonOtherField');
+  const rescheduleReasonOtherInput = document.getElementById('rescheduleReasonOther');
+  const rescheduleCancelBtn = document.getElementById('rescheduleCancelBtn');
+  const rescheduleSaveBtn = document.getElementById('rescheduleSaveBtn');
+
+  const rescheduleTimePicker = createTimePicker({
+    hourEl: document.getElementById('rescheduleTimeHour'),
+    minuteEl: document.getElementById('rescheduleTimeMinute'),
+    amBtn: document.getElementById('rescheduleTimeAM'),
+    pmBtn: document.getElementById('rescheduleTimePM'),
+    hiddenEl: document.getElementById('rescheduleTime'),
+    wrapperEl: document.getElementById('rescheduleTimePicker')
+  });
+
+  function openRescheduleModal(appt) {
+    rescheduleModalIdHidden.value = appt.id;
+    rescheduleModalNameEl.textContent = `${appt.title} ${appt.name}`;
+    rescheduleModalCurrentEl.textContent = `Current: ${formatDateInputValue(appt.date)} · ${formatTime12h(appt.time)}`;
+
+    rescheduleDateInput.value = appt.date;
+    rescheduleTimePicker.setValue(appt.time);
+    rescheduleReasonSelect.value = '';
+    rescheduleReasonOtherInput.value = '';
+    rescheduleReasonOtherField.hidden = true;
+
+    clearFieldError(rescheduleDateInput, rescheduleDateError);
+    markFieldErrorVisible(rescheduleTimeError, false);
+    rescheduleTimePicker.setInvalid(false);
+
+    rescheduleModalOverlay.hidden = false;
+  }
+
+  function closeRescheduleModal() {
+    rescheduleModalOverlay.hidden = true;
+  }
+
+  rescheduleReasonSelect.addEventListener('change', () => {
+    rescheduleReasonOtherField.hidden = rescheduleReasonSelect.value !== 'Other';
+  });
+
+  rescheduleCancelBtn.addEventListener('click', closeRescheduleModal);
+  rescheduleModalOverlay.addEventListener('click', (e) => {
+    if (e.target === rescheduleModalOverlay) closeRescheduleModal();
+  });
+
+  rescheduleSaveBtn.addEventListener('click', () => {
+    const apptId = rescheduleModalIdHidden.value;
+    const appt = DataStore.getById(apptId);
+    if (!appt) return;
+
+    const newDate = rescheduleDateInput.value;
+    const newTime = document.getElementById('rescheduleTime').value;
+
+    const dateValid = newDate.length > 0;
+    const timeValid = newTime.length > 0;
+    setFieldError(rescheduleDateInput, rescheduleDateError, !dateValid);
+    markFieldErrorVisible(rescheduleTimeError, !timeValid);
+    rescheduleTimePicker.setInvalid(!timeValid);
+    if (!dateValid || !timeValid) return;
+
+    let reason = rescheduleReasonSelect.value;
+    if (reason === 'Other') {
+      reason = rescheduleReasonOtherInput.value.trim();
+    }
+
+    const snapshot = Object.assign({}, appt);
+    const oldDate = appt.date;
+    const oldTime = appt.time;
+    const history = Array.isArray(appt.history) ? appt.history.slice() : [];
+    history.push({ date: oldDate, time: oldTime, changedAt: new Date().toISOString() });
+
+    const patch = {
+      date: newDate,
+      time: newTime,
+      status: 'rescheduled',
+      history
+    };
+    if (reason) patch.rescheduleReason = reason;
+
+    DataStore.update(apptId, patch);
+    closeRescheduleModal();
+    refreshEverything();
+    if (!dayModalOverlay.hidden) renderDayModalList();
+
+    const updatedAppt = DataStore.getById(apptId);
+    openWhatsApp(appt.mobile, generateRescheduleMessage(updatedAppt, oldDate, oldTime, newDate, newTime));
+    scheduleUndo('Appointment rescheduled successfully.', 'replace', apptId, snapshot);
   });
 
   /* ======================================================================
@@ -1142,13 +1511,13 @@
   const searchInput = document.getElementById('searchInput');
   const filterDateInput = document.getElementById('filterDate');
   const filterTypeSelect = document.getElementById('filterType');
+  const filterStatusSelect = document.getElementById('filterStatus');
   const sortOrderSelect = document.getElementById('sortOrder');
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
   const allAppointmentsListEl = document.getElementById('allAppointmentsList');
   const allAppointmentsEmptyEl = document.getElementById('allAppointmentsEmpty');
   const allAppointmentsCountEl = document.getElementById('allAppointmentsCount');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
-  const printDateInput = document.getElementById('printDate');
   const printScheduleBtn = document.getElementById('printScheduleBtn');
 
   function currentFilters() {
@@ -1156,6 +1525,7 @@
       search: searchInput.value,
       date: filterDateInput.value || undefined,
       type: filterTypeSelect.value,
+      status: filterStatusSelect.value,
       sort: sortOrderSelect.value
     };
   }
@@ -1172,7 +1542,7 @@
     }
   }
 
-  [searchInput, filterDateInput, filterTypeSelect, sortOrderSelect].forEach((el) => {
+  [searchInput, filterDateInput, filterTypeSelect, filterStatusSelect, sortOrderSelect].forEach((el) => {
     el.addEventListener('input', renderAllAppointments);
     el.addEventListener('change', renderAllAppointments);
   });
@@ -1181,8 +1551,45 @@
     searchInput.value = '';
     filterDateInput.value = '';
     filterTypeSelect.value = 'all';
+    filterStatusSelect.value = 'all';
     sortOrderSelect.value = 'asc';
     renderAllAppointments();
+  });
+
+  /* ======================================================================
+     EXPORT CSV MODULE
+     Dedicated modal: From/To date + Status/Type filters, mirroring the
+     Print Schedule modal. Confirming builds and downloads the CSV, then
+     auto-closes the dialog.
+     ====================================================================== */
+
+  const exportModalOverlay = document.getElementById('exportModalOverlay');
+  const exportModalFromInput = document.getElementById('exportModalFrom');
+  const exportModalToInput = document.getElementById('exportModalTo');
+  const exportModalFromError = document.getElementById('exportModalFromError');
+  const exportModalToError = document.getElementById('exportModalToError');
+  const exportModalStatusSelect = document.getElementById('exportModalStatus');
+  const exportModalTypeSelect = document.getElementById('exportModalType');
+  const exportModalCancelBtn = document.getElementById('exportModalCancelBtn');
+  const exportModalConfirmBtn = document.getElementById('exportModalConfirmBtn');
+
+  function openExportModal() {
+    const todayIso = isoDate(dateOffset(0));
+    exportModalFromInput.value = todayIso;
+    exportModalToInput.value = todayIso;
+    exportModalStatusSelect.value = 'all';
+    exportModalTypeSelect.value = 'all';
+    clearFieldError(exportModalFromInput, exportModalFromError);
+    clearFieldError(exportModalToInput, exportModalToError);
+    exportModalOverlay.hidden = false;
+  }
+  function closeExportModal() {
+    exportModalOverlay.hidden = true;
+  }
+  exportCsvBtn.addEventListener('click', openExportModal);
+  exportModalCancelBtn.addEventListener('click', closeExportModal);
+  exportModalOverlay.addEventListener('click', (e) => {
+    if (e.target === exportModalOverlay) closeExportModal();
   });
 
   function csvEscape(val) {
@@ -1191,56 +1598,203 @@
     return s;
   }
 
-  exportCsvBtn.addEventListener('click', () => {
-    const list = DataStore.query(currentFilters());
-    const header = ['Title', 'Name', 'Mobile', 'Date', 'Time', 'Type', 'Notes'];
+  exportModalConfirmBtn.addEventListener('click', () => {
+    const fromValid = !!exportModalFromInput.value;
+    const toValid = !!exportModalToInput.value;
+    setFieldError(exportModalFromInput, exportModalFromError, !fromValid);
+    setFieldError(exportModalToInput, exportModalToError, !toValid);
+    if (!fromValid || !toValid) return;
+
+    let fromIso = exportModalFromInput.value;
+    let toIso = exportModalToInput.value;
+    if (fromIso > toIso) { const tmp = fromIso; fromIso = toIso; toIso = tmp; }
+
+    const status = exportModalStatusSelect.value;
+    const type = exportModalTypeSelect.value;
+    const list = DataStore.query({ status, type, sort: 'asc' })
+      .filter((a) => a.date >= fromIso && a.date <= toIso);
+
+    const header = ['Title', 'Name', 'Mobile', 'Date', 'Time', 'Type', 'Status', 'Notes'];
     const rows = list.map((a) => [
       a.title, a.name, a.mobile, a.date, formatTime12h(a.time),
-      (TYPE_META[a.type] || TYPE_META.counselling).label, (a.notes || '').replace(/\n/g, ' ')
+      (TYPE_META[a.type] || TYPE_META.counselling).label,
+      (STATUS_META[a.status] || STATUS_META.scheduled).label,
+      (a.notes || '').replace(/\n/g, ' ')
     ]);
     const csv = [header, ...rows].map((r) => r.map(csvEscape).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `clinic-appointments-${isoDate(dateOffset(0))}.csv`;
+    link.download = fromIso === toIso
+      ? `clinic-appointments-${fromIso}.csv`
+      : `clinic-appointments-${fromIso}_to_${toIso}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    closeExportModal(); // auto-close: dialog closes once the export starts
     showToast(`Exported ${list.length} appointment${list.length === 1 ? '' : 's'} as CSV.`);
   });
 
+  /* ======================================================================
+     PRINT SCHEDULE MODULE
+     Dedicated modal: From/To date + Status/Type filters, with
+     "Print Schedule" (print immediately) and "Print Preview" (review
+     on screen first) actions. Both share one renderer so the printed
+     page and the preview always match exactly.
+     ====================================================================== */
+
+  const printModalOverlay = document.getElementById('printModalOverlay');
+  const printModalFromInput = document.getElementById('printModalFrom');
+  const printModalToInput = document.getElementById('printModalTo');
+  const printModalFromError = document.getElementById('printModalFromError');
+  const printModalToError = document.getElementById('printModalToError');
+  const printModalStatusSelect = document.getElementById('printModalStatus');
+  const printModalTypeSelect = document.getElementById('printModalType');
+  const printModalCancelBtn = document.getElementById('printModalCancelBtn');
+  const printModalPreviewBtn = document.getElementById('printModalPreviewBtn');
+  const printModalPrintBtn = document.getElementById('printModalPrintBtn');
+
+  const printPreviewOverlay = document.getElementById('printPreviewOverlay');
+  const printPreviewContentEl = document.getElementById('printPreviewContent');
+  const printPreviewCloseBtn = document.getElementById('printPreviewCloseBtn');
+  const printPreviewBackBtn = document.getElementById('printPreviewBackBtn');
+  const printPreviewPrintBtn = document.getElementById('printPreviewPrintBtn');
+
+  const printScheduleEl = document.getElementById('printSchedule');
   const printScheduleTitleEl = document.getElementById('printScheduleTitle');
+  const printScheduleRangeEl = document.getElementById('printScheduleRange');
+  const printScheduleGeneratedEl = document.getElementById('printScheduleGenerated');
   const printScheduleBodyEl = document.getElementById('printScheduleBody');
 
-  printScheduleBtn.addEventListener('click', () => {
-    const dateIso = printDateInput.value || isoDate(dateOffset(0));
-    const list = DataStore.query({ date: dateIso, sort: 'asc' });
+  function openPrintModal() {
+    const todayIso = isoDate(dateOffset(0));
+    printModalFromInput.value = todayIso;
+    printModalToInput.value = todayIso;
+    printModalStatusSelect.value = 'all';
+    printModalTypeSelect.value = 'all';
+    clearFieldError(printModalFromInput, printModalFromError);
+    clearFieldError(printModalToInput, printModalToError);
+    printModalOverlay.hidden = false;
+  }
+  function closePrintModal() {
+    printModalOverlay.hidden = true;
+  }
+  printScheduleBtn.addEventListener('click', openPrintModal);
+  printModalCancelBtn.addEventListener('click', closePrintModal);
+  printModalOverlay.addEventListener('click', (e) => {
+    if (e.target === printModalOverlay) closePrintModal();
+  });
 
-    printScheduleTitleEl.textContent = 'Daily Schedule — ' + formatDateInputValue(dateIso);
+  /** Reads + validates the modal's fields. Returns null (and shows field
+   *  errors) if invalid, otherwise the resolved filter set. */
+  function readPrintFilters() {
+    const fromValid = !!printModalFromInput.value;
+    const toValid = !!printModalToInput.value;
+    setFieldError(printModalFromInput, printModalFromError, !fromValid);
+    setFieldError(printModalToInput, printModalToError, !toValid);
+    if (!fromValid || !toValid) return null;
+
+    let fromIso = printModalFromInput.value;
+    let toIso = printModalToInput.value;
+    if (fromIso > toIso) {
+      const tmp = fromIso; fromIso = toIso; toIso = tmp;
+    }
+    return {
+      fromIso, toIso,
+      status: printModalStatusSelect.value,
+      type: printModalTypeSelect.value
+    };
+  }
+
+  function buildPrintList(filters) {
+    return DataStore.query({ status: filters.status, type: filters.type, sort: 'asc' })
+      .filter((a) => a.date >= filters.fromIso && a.date <= filters.toIso);
+  }
+
+  /** Renders the shared schedule markup into any container that has the
+   *  same title/range/generated/body element ids as #printSchedule. */
+  function renderScheduleInto(filters, list) {
+    const single = filters.fromIso === filters.toIso;
+    printScheduleTitleEl.textContent = single ? 'Daily Schedule' : 'Schedule Report';
+
+    let rangeText = single
+      ? formatDateInputValue(filters.fromIso)
+      : `${formatDateInputValue(filters.fromIso)} to ${formatDateInputValue(filters.toIso)}`;
+    const extra = [];
+    if (filters.status !== 'all') extra.push('Status: ' + (STATUS_META[filters.status] || {}).label);
+    if (filters.type !== 'all') extra.push('Type: ' + (TYPE_META[filters.type] || {}).label);
+    if (extra.length) rangeText += ' · ' + extra.join(' · ');
+    printScheduleRangeEl.textContent = rangeText;
+
+    const now = new Date();
+    printScheduleGeneratedEl.textContent = 'Generated On: ' + formatFullDate(now) + ', ' + formatTime12h(`${pad(now.getHours())}:${pad(now.getMinutes())}`);
+
     printScheduleBodyEl.innerHTML = '';
-
     if (list.length === 0) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.colSpan = 5;
-      td.textContent = 'No appointments scheduled for this day.';
+      td.colSpan = 7;
+      td.textContent = 'No appointments found for the selected period.';
+      td.style.textAlign = 'center';
       tr.appendChild(td);
       printScheduleBodyEl.appendChild(tr);
     } else {
       list.forEach((a) => {
         const tr = document.createElement('tr');
         tr.innerHTML =
+          `<td>${formatDateInputValue(a.date)}</td>` +
           `<td>${formatTime12h(a.time)}</td>` +
           `<td>${escapeHtml(a.title)} ${escapeHtml(a.name)}</td>` +
           `<td>${escapeHtml(a.mobile)}</td>` +
           `<td>${escapeHtml((TYPE_META[a.type] || TYPE_META.counselling).label)}</td>` +
+          `<td>${escapeHtml((STATUS_META[a.status] || STATUS_META.scheduled).label)}</td>` +
           `<td>${escapeHtml(a.notes || '')}</td>`;
         printScheduleBodyEl.appendChild(tr);
       });
     }
+  }
 
+  printModalPrintBtn.addEventListener('click', () => {
+    const filters = readPrintFilters();
+    if (!filters) return;
+    const list = buildPrintList(filters);
+    renderScheduleInto(filters, list);
+    closePrintModal(); // auto-close: dialog closes as printing starts
+    window.print();
+  });
+
+  printModalPreviewBtn.addEventListener('click', () => {
+    const filters = readPrintFilters();
+    if (!filters) return;
+    const list = buildPrintList(filters);
+    renderScheduleInto(filters, list);
+    // Clone the freshly-rendered sheet into the on-screen preview modal.
+    printPreviewContentEl.innerHTML = '';
+    const clone = printScheduleEl.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.classList.add('print-schedule--preview');
+    clone.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+    printPreviewContentEl.appendChild(clone);
+    closePrintModal();
+    printPreviewOverlay.hidden = false;
+  });
+
+  function closePrintPreview() {
+    printPreviewOverlay.hidden = true;
+  }
+  printPreviewCloseBtn.addEventListener('click', closePrintPreview);
+  printPreviewOverlay.addEventListener('click', (e) => {
+    if (e.target === printPreviewOverlay) closePrintPreview();
+  });
+  printPreviewBackBtn.addEventListener('click', () => {
+    closePrintPreview();
+    openPrintModal();
+  });
+  printPreviewPrintBtn.addEventListener('click', () => {
+    closePrintPreview(); // auto-close: dialog closes as printing starts
     window.print();
   });
 
@@ -1262,7 +1816,6 @@
   function init() {
     migrateLegacyData();
     initReminderDateLabels();
-    printDateInput.value = isoDate(dateOffset(0));
 
     refreshEverything();
     updateHeaderClock();

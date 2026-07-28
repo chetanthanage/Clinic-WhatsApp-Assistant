@@ -25,10 +25,24 @@ Built with plain **HTML5, CSS3, and vanilla JavaScript** — no frameworks, no b
 - Copy Message / Send to Doctor (fixed WhatsApp number)
 - Friendly empty state pointing back to the Calendar when nothing is scheduled
 
+### ❌ Cancel Appointment
+- Selecting **Cancelled** as the appointment type and saving opens a dedicated confirmation dialog (not the browser default) showing the patient's name, date, and time
+- A cancellation reason is required — pick from the list or choose **Other** to type a custom one
+- On confirmation: status becomes **Cancelled**, the reason and cancellation timestamp are recorded, a red "Cancelled" badge appears on the card, and WhatsApp opens automatically with the cancellation message pre-filled
+
+### 🔁 Reschedule Appointment
+- Every appointment card has an orange **Reschedule** action
+- The reschedule modal lets you change only the date and time (reason optional), keeps a history of the previous date/time, and marks the appointment **Rescheduled**
+- Saving immediately opens WhatsApp with the "Appointment Rescheduled" message (old date/time vs new date/time) and refreshes the Calendar, Dashboard, and Doctor Reminder
+
+### ↩️ Undo
+- Cancelling or rescheduling shows an **Undo** bar for 20 seconds with a live countdown
+- Clicking Undo fully restores the appointment's previous status, date, and time
+
 ### 📋 All Appointments (search, filter, export)
-- Search by patient name, filter by date, filter by appointment type, sort by time
-- Each result card supports Edit / Delete / Send WhatsApp
-- **Export CSV** of the current filtered results
+- Search by patient name, filter by date, filter by appointment type, filter by **status** (Scheduled / Confirmed / Cancelled / Rescheduled / Completed), sort by time
+- Each result card supports Edit / Reschedule / Delete / Send WhatsApp
+- **Export CSV** of the current filtered results (includes status)
 - **Print Daily Schedule** for any chosen date (clean print-only layout)
 
 ### 📊 Dashboard

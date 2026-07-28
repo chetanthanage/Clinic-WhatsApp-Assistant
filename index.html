@@ -30,7 +30,7 @@
   <!-- ============ HEADER ============ -->
   <header class="hero">
     <div class="hero__main">
-      <h1 class="hero__title">🏥 Trupti Hospital Assistant</h1>
+      <h1 class="hero__title">🏥 Clinic WhatsApp Assistant</h1>
       <p class="hero__subtitle">Dr. Rohini K. Patole Clinic</p>
     </div>
 
@@ -227,6 +227,17 @@
             </select>
           </div>
           <div class="field">
+            <label class="field__label" for="filterStatus">Filter by status</label>
+            <select class="field__input" id="filterStatus">
+              <option value="all">All Statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="rescheduled">Rescheduled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="field">
             <label class="field__label" for="sortOrder">Sort by time</label>
             <select class="field__input" id="sortOrder">
               <option value="asc">Earliest first</option>
@@ -237,16 +248,16 @@
             <span class="material-symbols-rounded">filter_alt_off</span> Clear Filters
           </button>
         </div>
+      </div>
 
-        <div class="filter-bar filter-bar--export">
-          <button class="btn btn--purple btn--sm" id="exportCsvBtn" type="button">
+      <div class="card glass section-card--actions">
+        <h2 class="section-card__title section-card__title--simple">Export &amp; Print</h2>
+        <p class="section-card__hint">Generate a CSV export or a printable schedule for a chosen date range.</p>
+        <div class="action-btn-row">
+          <button class="btn btn--purple btn--lg" id="exportCsvBtn" type="button">
             <span class="material-symbols-rounded">download</span> Export CSV
           </button>
-          <div class="field">
-            <label class="field__label" for="printDate">Print daily schedule for</label>
-            <input class="field__input" type="date" id="printDate">
-          </div>
-          <button class="btn btn--blue btn--sm" id="printScheduleBtn" type="button">
+          <button class="btn btn--blue btn--lg" id="printScheduleBtn" type="button">
             <span class="material-symbols-rounded">print</span> Print Schedule
           </button>
         </div>
@@ -381,8 +392,264 @@
   </div>
 </div>
 
+<!-- ============ CANCEL APPOINTMENT CONFIRMATION DIALOG ============ -->
+<div class="modal-overlay" id="cancelConfirmOverlay" hidden>
+  <div class="modal modal--confirm glass" role="alertdialog" aria-modal="true" aria-labelledby="cancelConfirmTitle">
+    <span class="material-symbols-rounded modal__warn-icon">event_busy</span>
+    <h3 class="modal__title" id="cancelConfirmTitle">Cancel this appointment?</h3>
+
+    <div class="cancel-confirm__patient">
+      <span class="cancel-confirm__name" id="cancelConfirmName">Patient Name</span>
+      <span class="cancel-confirm__datetime" id="cancelConfirmDateTime">Date · Time</span>
+    </div>
+
+    <p class="modal__message">Are you sure you want to cancel this appointment?</p>
+
+    <div class="field cancel-confirm__reason-field">
+      <label class="field__label" for="cancelReasonSelect">Reason (required)</label>
+      <select class="field__input" id="cancelReasonSelect">
+        <option value="">Select a reason…</option>
+        <option value="Doctor unavailable">Doctor unavailable</option>
+        <option value="Patient requested cancellation">Patient requested cancellation</option>
+        <option value="Emergency">Emergency</option>
+        <option value="Clinic closed">Clinic closed</option>
+        <option value="Public holiday">Public holiday</option>
+        <option value="Personal reasons">Personal reasons</option>
+        <option value="Other">Other</option>
+      </select>
+      <span class="field__error" id="cancelReasonError">Please select a cancellation reason.</span>
+    </div>
+
+    <div class="field cancel-confirm__other-field" id="cancelReasonOtherField" hidden>
+      <label class="field__label" for="cancelReasonOther">Please specify</label>
+      <input class="field__input" type="text" id="cancelReasonOther" placeholder="Enter a reason…">
+      <span class="field__error" id="cancelReasonOtherError">Please enter a reason.</span>
+    </div>
+
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="cancelConfirmKeepBtn" type="button">
+        <span class="material-symbols-rounded">close</span> No, Keep Appointment
+      </button>
+      <button class="btn btn--red" id="cancelConfirmProceedBtn" type="button">
+        <span class="material-symbols-rounded">check</span> Cancel Appointment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESCHEDULE APPOINTMENT MODAL ============ -->
+<div class="modal-overlay" id="rescheduleModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="rescheduleModalTitle">
+    <h3 class="modal__title" id="rescheduleModalTitle">Reschedule Appointment</h3>
+
+    <div class="cancel-confirm__patient">
+      <span class="cancel-confirm__name" id="rescheduleModalName">Patient Name</span>
+      <span class="cancel-confirm__datetime" id="rescheduleModalCurrent">Current: Date · Time</span>
+    </div>
+    <input type="hidden" id="rescheduleModalId">
+
+    <div class="form-grid form-grid--modal">
+      <div class="field">
+        <label class="field__label" for="rescheduleDate">New Appointment Date</label>
+        <input class="field__input" type="date" id="rescheduleDate">
+        <span class="field__error" id="rescheduleDateError">A new date is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" id="rescheduleTimeLabel">New Appointment Time</label>
+        <div class="time-picker" id="rescheduleTimePicker">
+          <select class="time-picker__select" id="rescheduleTimeHour" aria-label="Hour">
+            <option value="">HH</option>
+          </select>
+          <span class="time-picker__colon">:</span>
+          <select class="time-picker__select" id="rescheduleTimeMinute" aria-label="Minute">
+            <option value="">MM</option>
+          </select>
+          <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
+            <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="rescheduleTimeAM">AM</button>
+            <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="rescheduleTimePM">PM</button>
+          </div>
+        </div>
+        <input type="hidden" id="rescheduleTime">
+        <span class="field__error" id="rescheduleTimeError">A new time is required.</span>
+      </div>
+
+      <div class="field field--span2">
+        <label class="field__label" for="rescheduleReasonSelect">Reason for Reschedule (optional)</label>
+        <select class="field__input" id="rescheduleReasonSelect">
+          <option value="">No reason specified</option>
+          <option value="Doctor unavailable">Doctor unavailable</option>
+          <option value="Patient requested">Patient requested</option>
+          <option value="Emergency">Emergency</option>
+          <option value="Schedule adjustment">Schedule adjustment</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="field field--span2" id="rescheduleReasonOtherField" hidden>
+        <label class="field__label" for="rescheduleReasonOther">Please specify</label>
+        <input class="field__input" type="text" id="rescheduleReasonOther" placeholder="Enter a reason…">
+      </div>
+    </div>
+
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="rescheduleCancelBtn" type="button">Cancel</button>
+      <button class="btn btn--orange" id="rescheduleSaveBtn" type="button">
+        <span class="material-symbols-rounded">send</span> Save &amp; Send WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EXPORT CSV MODAL ============ -->
+<div class="modal-overlay" id="exportModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+    <h3 class="modal__title" id="exportModalTitle">
+      <span class="material-symbols-rounded" aria-hidden="true" style="vertical-align:-4px;">download</span>
+      Export CSV
+    </h3>
+    <p class="modal__date-label">Choose a date range and, optionally, narrow it down further.</p>
+
+    <div class="form-grid form-grid--modal">
+      <div class="field">
+        <label class="field__label" for="exportModalFrom">📅 From Date</label>
+        <input class="field__input" type="date" id="exportModalFrom">
+        <span class="field__error" id="exportModalFromError">From date is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="exportModalTo">📅 To Date</label>
+        <input class="field__input" type="date" id="exportModalTo">
+        <span class="field__error" id="exportModalToError">To date is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="exportModalStatus">Appointment Status</label>
+        <select class="field__input" id="exportModalStatus">
+          <option value="all">All</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="exportModalType">Appointment Type</label>
+        <select class="field__input" id="exportModalType">
+          <option value="all">All</option>
+          <option value="counselling">Counselling</option>
+          <option value="followup">Follow-up</option>
+          <option value="new">New Patient</option>
+          <option value="review">Review</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="exportModalCancelBtn" type="button">
+        <span class="material-symbols-rounded">close</span> Cancel
+      </button>
+      <button class="btn btn--purple" id="exportModalConfirmBtn" type="button">
+        <span class="material-symbols-rounded">download</span> Export CSV
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRINT SCHEDULE MODAL ============ -->
+<div class="modal-overlay" id="printModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="printModalTitle">
+    <h3 class="modal__title" id="printModalTitle">
+      <span class="material-symbols-rounded" aria-hidden="true" style="vertical-align:-4px;">print</span>
+      Print Schedule
+    </h3>
+    <p class="modal__date-label">Choose a date range and, optionally, narrow it down further.</p>
+
+    <div class="form-grid form-grid--modal">
+      <div class="field">
+        <label class="field__label" for="printModalFrom">📅 From Date</label>
+        <input class="field__input" type="date" id="printModalFrom">
+        <span class="field__error" id="printModalFromError">From date is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="printModalTo">📅 To Date</label>
+        <input class="field__input" type="date" id="printModalTo">
+        <span class="field__error" id="printModalToError">To date is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="printModalStatus">Appointment Status</label>
+        <select class="field__input" id="printModalStatus">
+          <option value="all">All</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="printModalType">Appointment Type</label>
+        <select class="field__input" id="printModalType">
+          <option value="all">All</option>
+          <option value="counselling">Counselling</option>
+          <option value="followup">Follow-up</option>
+          <option value="new">New Patient</option>
+          <option value="review">Review</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row btn-row--modal btn-row--print">
+      <button class="btn btn--grey" id="printModalCancelBtn" type="button">
+        <span class="material-symbols-rounded">close</span> Cancel
+      </button>
+      <button class="btn btn--purple" id="printModalPreviewBtn" type="button">
+        <span class="material-symbols-rounded">visibility</span> Print Preview
+      </button>
+      <button class="btn btn--blue" id="printModalPrintBtn" type="button">
+        <span class="material-symbols-rounded">print</span> Print Schedule
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRINT PREVIEW MODAL ============ -->
+<div class="modal-overlay" id="printPreviewOverlay" hidden>
+  <div class="modal modal--wide glass" role="dialog" aria-modal="true" aria-labelledby="printPreviewTitle">
+    <div class="modal__header-row">
+      <h3 class="modal__title" id="printPreviewTitle">Print Preview</h3>
+      <button class="icon-btn" id="printPreviewCloseBtn" type="button" aria-label="Close">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+
+    <div class="print-preview-frame" id="printPreviewContent"></div>
+
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="printPreviewBackBtn" type="button">
+        <span class="material-symbols-rounded">arrow_back</span> Back
+      </button>
+      <button class="btn btn--blue" id="printPreviewPrintBtn" type="button">
+        <span class="material-symbols-rounded">print</span> Print Now
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ TOAST ============ -->
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ============ UNDO TOAST ============ -->
+<div class="undo-toast glass" id="undoToast" hidden>
+  <span class="undo-toast__text" id="undoToastText">Appointment cancelled successfully.</span>
+  <button class="undo-toast__btn" id="undoBtn" type="button">Undo</button>
+  <span class="undo-toast__bar" id="undoToastBar"></span>
+</div>
 
 <!-- ============ LOADING OVERLAY ============ -->
 <div class="loading-overlay" id="loadingOverlay" hidden>
@@ -390,16 +657,21 @@
   <p class="loading-overlay__text">Opening WhatsApp…</p>
 </div>
 
-<!-- ============ PRINTABLE DAILY SCHEDULE (print-only) ============ -->
+<!-- ============ PRINTABLE SCHEDULE (print-only; also cloned into Print Preview) ============ -->
 <div class="print-schedule" id="printSchedule">
-  <h1 id="printScheduleTitle">Daily Schedule</h1>
-  <p id="printScheduleSubtitle">Dr. Rohini K. Patole Clinic</p>
+  <div class="print-schedule__header">
+    <p class="print-schedule__clinic">🏥 Dr. Rohini K. Patole Clinic</p>
+    <h1 id="printScheduleTitle">Schedule Report</h1>
+    <p class="print-schedule__range" id="printScheduleRange">Selected Date Range</p>
+    <p class="print-schedule__generated" id="printScheduleGenerated">Generated On: —</p>
+  </div>
   <table id="printScheduleTable">
     <thead>
-      <tr><th>Time</th><th>Patient</th><th>Mobile</th><th>Type</th><th>Notes</th></tr>
+      <tr><th>Date</th><th>Time</th><th>Patient</th><th>Mobile</th><th>Type</th><th>Status</th><th>Notes</th></tr>
     </thead>
     <tbody id="printScheduleBody"></tbody>
   </table>
+  <p class="print-schedule__footer">Clinic WhatsApp Assistant · Printed report</p>
 </div>
 
 <script src="script.js"></script>
