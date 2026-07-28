@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Clinic WhatsApp Assistant</title>
-<meta name="description" content="Generate and send WhatsApp reminders and appointment confirmations for Dr. Rohini K. Patole Clinic.">
+<meta name="description" content="Calendar-driven appointment management with WhatsApp reminders and confirmations for Dr. Rohini K. Patole Clinic.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,12 +25,12 @@
   <div class="blob blob--orange"></div>
 </div>
 
-<div class="shell">
+<div class="shell" id="appShell">
 
   <!-- ============ HEADER ============ -->
   <header class="hero">
     <div class="hero__main">
-      <h1 class="hero__title">🏥 Clinic WhatsApp Assistant</h1>
+      <h1 class="hero__title">🏥 Trupti Hospital Assistant</h1>
       <p class="hero__subtitle">Dr. Rohini K. Patole Clinic</p>
     </div>
 
@@ -46,82 +46,120 @@
     </div>
   </header>
 
-  <!-- ============ STATS ============ -->
-  <section class="stats" aria-label="Dashboard summary">
+  <!-- ============ DASHBOARD STATS ============ -->
+  <section class="stats stats--five" aria-label="Dashboard summary">
     <div class="stat-card stat-card--purple glass">
       <span class="material-symbols-rounded stat-card__icon">today</span>
       <span class="stat-card__value" id="statToday">0</span>
-      <span class="stat-card__label">Today's Appointments</span>
+      <span class="stat-card__label">Today</span>
     </div>
     <div class="stat-card stat-card--blue glass">
       <span class="material-symbols-rounded stat-card__icon">event_upcoming</span>
       <span class="stat-card__value" id="statTomorrow">0</span>
       <span class="stat-card__label">Tomorrow</span>
     </div>
+    <div class="stat-card stat-card--cyan glass">
+      <span class="material-symbols-rounded stat-card__icon">date_range</span>
+      <span class="stat-card__value" id="statWeek">0</span>
+      <span class="stat-card__label">This Week</span>
+    </div>
     <div class="stat-card stat-card--pink glass">
-      <span class="material-symbols-rounded stat-card__icon">forum</span>
-      <span class="stat-card__value" id="statMessages">0</span>
-      <span class="stat-card__label">Messages Ready</span>
+      <span class="material-symbols-rounded stat-card__icon">calendar_month</span>
+      <span class="stat-card__value" id="statMonth">0</span>
+      <span class="stat-card__label">This Month</span>
     </div>
     <div class="stat-card stat-card--green glass">
-      <span class="material-symbols-rounded stat-card__icon">check_circle</span>
-      <span class="stat-card__value stat-card__value--text" id="statStatus">Ready</span>
-      <span class="stat-card__label">WhatsApp Status</span>
+      <span class="material-symbols-rounded stat-card__icon">bolt</span>
+      <span class="stat-card__value stat-card__value--text" id="statUpcoming">None</span>
+      <span class="stat-card__label">Upcoming Appointment</span>
     </div>
   </section>
 
   <!-- ============ TABS ============ -->
   <nav class="tabs glass" role="tablist" aria-label="Main navigation">
-    <button class="tab tab--active" id="tabBtnReminder" role="tab" aria-selected="true" aria-controls="panelReminder" type="button">
+    <button class="tab tab--active" id="tabBtnCalendar" role="tab" aria-selected="true" aria-controls="panelCalendar" type="button">
+      <span class="material-symbols-rounded">calendar_month</span>
+      <span>Calendar</span>
+    </button>
+    <button class="tab" id="tabBtnReminder" role="tab" aria-selected="false" aria-controls="panelReminder" type="button">
       <span class="material-symbols-rounded">stethoscope</span>
       <span>Doctor Reminder</span>
     </button>
-    <button class="tab" id="tabBtnAppointment" role="tab" aria-selected="false" aria-controls="panelAppointment" type="button">
-      <span class="material-symbols-rounded">calendar_month</span>
-      <span>Patient Appointment</span>
+    <button class="tab" id="tabBtnAll" role="tab" aria-selected="false" aria-controls="panelAll" type="button">
+      <span class="material-symbols-rounded">list_alt</span>
+      <span>All Appointments</span>
     </button>
   </nav>
 
   <main class="container">
 
     <!-- ============================================================ -->
-    <!-- TAB 1 : DOCTOR REMINDER -->
+    <!-- TAB 1 : CALENDAR (central source of appointment data) -->
     <!-- ============================================================ -->
-    <section class="panel panel--active" id="panelReminder" role="tabpanel" aria-labelledby="tabBtnReminder">
+    <section class="panel panel--active" id="panelCalendar" role="tabpanel" aria-labelledby="tabBtnCalendar">
 
-      <!-- TODAY -->
+      <div class="card glass calendar-card">
+        <div class="calendar-toolbar">
+          <div class="calendar-toolbar__nav">
+            <button class="icon-btn" id="calPrevBtn" type="button" aria-label="Previous month">
+              <span class="material-symbols-rounded">chevron_left</span>
+            </button>
+            <h2 class="calendar-toolbar__title" id="calendarTitle">Month Year</h2>
+            <button class="icon-btn" id="calNextBtn" type="button" aria-label="Next month">
+              <span class="material-symbols-rounded">chevron_right</span>
+            </button>
+          </div>
+          <button class="btn btn--purple btn--sm" id="calTodayBtn" type="button">
+            <span class="material-symbols-rounded">today</span> Today
+          </button>
+        </div>
+
+        <div class="calendar-weekdays" id="calendarWeekdays"></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+
+        <div class="calendar-legend">
+          <span class="calendar-legend__item"><span class="dot dot--purple"></span>Counselling</span>
+          <span class="calendar-legend__item"><span class="dot dot--blue"></span>Follow-up</span>
+          <span class="calendar-legend__item"><span class="dot dot--green"></span>New Patient</span>
+          <span class="calendar-legend__item"><span class="dot dot--orange"></span>Review</span>
+          <span class="calendar-legend__item"><span class="dot dot--red"></span>Cancelled</span>
+          <span class="calendar-legend__item"><span class="dot dot--grey"></span>Completed</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2 : DOCTOR REMINDER (auto-read from calendar, no manual entry) -->
+    <!-- ============================================================ -->
+    <section class="panel" id="panelReminder" role="tabpanel" aria-labelledby="tabBtnReminder" hidden>
+
       <div class="card glass section-card">
         <div class="section-card__header">
           <h2 class="section-card__title">
             <span class="section-card__badge section-card__badge--today">Today</span>
             <span id="todayDateLabel">Today's Appointments</span>
           </h2>
-          <button class="btn btn--orange" id="addTodayBtn" type="button">
-            <span class="material-symbols-rounded">add</span> Add Appointment
-          </button>
         </div>
+        <p class="section-card__hint">Read automatically from the Calendar. Manage appointments there.</p>
         <div class="appt-list" id="todayList"></div>
         <p class="empty-state" id="todayEmpty">
           <span class="material-symbols-rounded empty-state__icon">event_available</span>
-          No appointments yet for today. Tap <strong>Add Appointment</strong> to create one.
+          No appointments scheduled for today yet. Add one from the <strong>Calendar</strong> tab.
         </p>
       </div>
 
-      <!-- TOMORROW -->
       <div class="card glass section-card">
         <div class="section-card__header">
           <h2 class="section-card__title">
             <span class="section-card__badge section-card__badge--tomorrow">Tomorrow</span>
             <span id="tomorrowDateLabel">Tomorrow's Appointments</span>
           </h2>
-          <button class="btn btn--orange" id="addTomorrowBtn" type="button">
-            <span class="material-symbols-rounded">add</span> Add Appointment
-          </button>
         </div>
+        <p class="section-card__hint">Read automatically from the Calendar. Manage appointments there.</p>
         <div class="appt-list" id="tomorrowList"></div>
         <p class="empty-state" id="tomorrowEmpty">
           <span class="material-symbols-rounded empty-state__icon">event_available</span>
-          No appointments yet for tomorrow. Tap <strong>Add Appointment</strong> to create one.
+          No appointments scheduled for tomorrow yet. Add one from the <strong>Calendar</strong> tab.
         </p>
       </div>
 
@@ -152,9 +190,6 @@
           <button class="btn btn--purple" id="copyReminderBtn" type="button">
             <span class="material-symbols-rounded">content_copy</span> Copy Message
           </button>
-          <button class="btn btn--grey" id="clearReminderBtn" type="button">
-            <span class="material-symbols-rounded">restart_alt</span> Clear All
-          </button>
           <button class="btn btn--green" id="sendDoctorBtn" type="button">
             <span class="material-symbols-rounded">send</span> Send to Doctor
           </button>
@@ -163,163 +198,177 @@
     </section>
 
     <!-- ============================================================ -->
-    <!-- TAB 2 : PATIENT APPOINTMENT -->
+    <!-- TAB 3 : ALL APPOINTMENTS (search, filter, sort, export) -->
     <!-- ============================================================ -->
-    <section class="panel" id="panelAppointment" role="tabpanel" aria-labelledby="tabBtnAppointment" hidden>
+    <section class="panel" id="panelAll" role="tabpanel" aria-labelledby="tabBtnAll" hidden>
 
       <div class="card glass">
-        <h2 class="section-card__title section-card__title--simple">Appointment Details</h2>
+        <h2 class="section-card__title section-card__title--simple">Search &amp; Filter</h2>
 
-        <form id="appointmentForm" novalidate>
-          <div class="form-grid">
-
-            <div class="field">
-              <label class="field__label" for="titleSelect">Title</label>
-              <select class="field__input" id="titleSelect">
-                <option value="Mr.">Mr.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Ms." selected>Ms.</option>
-                <option value="Miss">Miss</option>
-                <option value="Master">Master</option>
-                <option value="Dr.">Dr.</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="patientName">Patient Name</label>
-              <input class="field__input" type="text" id="patientName" placeholder="e.g. Saniya Shaikh" autocomplete="off">
-              <span class="field__error" id="patientNameError">Patient name is required.</span>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="patientMobile">Patient Mobile Number</label>
-              <input class="field__input" type="tel" id="patientMobile" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" autocomplete="off">
-              <span class="field__error" id="patientMobileError">Mobile number must be exactly 10 digits.</span>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="apptDate">Appointment Date</label>
-              <input class="field__input" type="date" id="apptDate">
-              <span class="field__error" id="apptDateError">Appointment date is required.</span>
-            </div>
-
-            <div class="field">
-              <label class="field__label" id="apptTimeLabel">Appointment Time</label>
-              <div class="time-picker" id="apptTimePicker">
-                <select class="time-picker__select" id="apptTimeHour" aria-label="Hour">
-                  <option value="">HH</option>
-                </select>
-                <span class="time-picker__colon">:</span>
-                <select class="time-picker__select" id="apptTimeMinute" aria-label="Minute">
-                  <option value="">MM</option>
-                </select>
-                <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
-                  <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="apptTimeAM">AM</button>
-                  <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="apptTimePM">PM</button>
-                </div>
-              </div>
-              <input type="hidden" id="apptTime">
-              <span class="field__error" id="apptTimeError">Appointment time is required.</span>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="doctorName">Doctor Name</label>
-              <input class="field__input field__input--readonly" type="text" id="doctorName" value="Dr. Rohini K. Patole" readonly>
-            </div>
-
-            <div class="field field--span2">
-              <label class="field__label" for="clinicLocation">Clinic Location</label>
-              <input class="field__input field__input--readonly" type="text" id="clinicLocation" value="https://maps.app.goo.gl/9QFgEV1qnKZRDiTPA" readonly>
-            </div>
-
+        <div class="filter-bar">
+          <div class="field field--grow">
+            <label class="field__label" for="searchInput">Search by name</label>
+            <input class="field__input" type="text" id="searchInput" placeholder="e.g. Saniya">
           </div>
-        </form>
+          <div class="field">
+            <label class="field__label" for="filterDate">Filter by date</label>
+            <input class="field__input" type="date" id="filterDate">
+          </div>
+          <div class="field">
+            <label class="field__label" for="filterType">Filter by type</label>
+            <select class="field__input" id="filterType">
+              <option value="all">All Types</option>
+              <option value="counselling">Counselling</option>
+              <option value="followup">Follow-up</option>
+              <option value="new">New Patient</option>
+              <option value="review">Review</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="sortOrder">Sort by time</label>
+            <select class="field__input" id="sortOrder">
+              <option value="asc">Earliest first</option>
+              <option value="desc">Latest first</option>
+            </select>
+          </div>
+          <button class="btn btn--grey btn--sm" id="clearFiltersBtn" type="button">
+            <span class="material-symbols-rounded">filter_alt_off</span> Clear Filters
+          </button>
+        </div>
+
+        <div class="filter-bar filter-bar--export">
+          <button class="btn btn--purple btn--sm" id="exportCsvBtn" type="button">
+            <span class="material-symbols-rounded">download</span> Export CSV
+          </button>
+          <div class="field">
+            <label class="field__label" for="printDate">Print daily schedule for</label>
+            <input class="field__input" type="date" id="printDate">
+          </div>
+          <button class="btn btn--blue btn--sm" id="printScheduleBtn" type="button">
+            <span class="material-symbols-rounded">print</span> Print Schedule
+          </button>
+        </div>
       </div>
 
-      <!-- WHATSAPP-STYLE PREVIEW -->
-      <div class="card glass preview-card">
-        <h2 class="preview-card__title">Preview Message</h2>
-
-        <div class="wa-window">
-          <div class="wa-window__header">
-            <span class="material-symbols-rounded wa-window__back">arrow_back</span>
-            <span class="wa-window__avatar wa-window__avatar--blue">PT</span>
-            <span class="wa-window__name" id="waPatientHeaderName">Patient</span>
-            <span class="material-symbols-rounded wa-window__icon">videocam</span>
-            <span class="material-symbols-rounded wa-window__icon">call</span>
-          </div>
-          <div class="wa-window__body">
-            <div class="wa-bubble">
-              <pre class="wa-bubble__text" id="appointmentPreview"></pre>
-              <span class="wa-bubble__meta">
-                <span class="wa-bubble__time" id="appointmentTimestamp">--:--</span>
-                <span class="material-symbols-rounded wa-bubble__ticks">done_all</span>
-              </span>
-            </div>
-          </div>
+      <div class="card glass">
+        <div class="section-card__header">
+          <h2 class="section-card__title section-card__title--simple">
+            <span id="allAppointmentsCount">0 appointments</span>
+          </h2>
         </div>
-
-        <div class="btn-row">
-          <button class="btn btn--purple" id="copyAppointmentBtn" type="button">
-            <span class="material-symbols-rounded">content_copy</span> Copy
-          </button>
-          <button class="btn btn--grey" id="resetAppointmentBtn" type="button">
-            <span class="material-symbols-rounded">restart_alt</span> Reset
-          </button>
-          <button class="btn btn--blue" id="sendPatientBtn" type="button">
-            <span class="material-symbols-rounded">send</span> Send to Patient
-          </button>
-        </div>
+        <div class="appt-list" id="allAppointmentsList"></div>
+        <p class="empty-state" id="allAppointmentsEmpty">
+          <span class="material-symbols-rounded empty-state__icon">search_off</span>
+          No appointments match your filters.
+        </p>
       </div>
     </section>
 
   </main>
 </div>
 
-<!-- ============ APPOINTMENT MODAL (used for Add Appointment in Tab 1) ============ -->
-<div class="modal-overlay" id="modalOverlay" hidden>
-  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <h3 class="modal__title" id="modalTitle">Add Appointment</h3>
+<!-- ============ ADD / EDIT APPOINTMENT MODAL ============ -->
+<div class="modal-overlay" id="apptModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="apptModalTitle">
+    <h3 class="modal__title" id="apptModalTitle">Add Appointment</h3>
+    <p class="modal__date-label" id="apptModalDateLabel">For Tuesday, 28 July 2026</p>
+    <input type="hidden" id="apptModalDate">
+    <input type="hidden" id="apptModalId">
 
-    <div class="field">
-      <label class="field__label" for="modalPatientName">Patient Name</label>
-      <input class="field__input" type="text" id="modalPatientName" placeholder="e.g. Saniya Shaikh" autocomplete="off">
-      <span class="field__error" id="modalPatientNameError">Patient name is required.</span>
-    </div>
-
-    <div class="field">
-      <label class="field__label" id="modalApptTimeLabel">Appointment Time</label>
-      <div class="time-picker" id="modalApptTimePicker">
-        <select class="time-picker__select" id="modalApptTimeHour" aria-label="Hour">
-          <option value="">HH</option>
+    <div class="form-grid form-grid--modal">
+      <div class="field">
+        <label class="field__label" for="apptModalTitleSelect">Title</label>
+        <select class="field__input" id="apptModalTitleSelect">
+          <option value="Mr.">Mr.</option>
+          <option value="Mrs.">Mrs.</option>
+          <option value="Ms." selected>Ms.</option>
+          <option value="Miss">Miss</option>
+          <option value="Master">Master</option>
+          <option value="Dr.">Dr.</option>
         </select>
-        <span class="time-picker__colon">:</span>
-        <select class="time-picker__select" id="modalApptTimeMinute" aria-label="Minute">
-          <option value="">MM</option>
-        </select>
-        <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
-          <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="modalApptTimeAM">AM</button>
-          <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="modalApptTimePM">PM</button>
-        </div>
       </div>
-      <input type="hidden" id="modalApptTime">
-      <span class="field__error" id="modalApptTimeError">Appointment time is required.</span>
-    </div>
 
-    <div class="field">
-      <label class="field__label" for="modalMobile">Mobile Number</label>
-      <input class="field__input" type="tel" id="modalMobile" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" autocomplete="off">
-      <span class="field__error" id="modalMobileError">Mobile number must be exactly 10 digits.</span>
+      <div class="field">
+        <label class="field__label" for="apptModalType">Appointment Type</label>
+        <select class="field__input" id="apptModalType">
+          <option value="counselling">Counselling</option>
+          <option value="followup">Follow-up</option>
+          <option value="new">New Patient</option>
+          <option value="review">Review</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      <div class="field field--span2">
+        <label class="field__label" for="apptModalName">Patient Name</label>
+        <input class="field__input" type="text" id="apptModalName" placeholder="e.g. Saniya Shaikh" autocomplete="off">
+        <span class="field__error" id="apptModalNameError">Patient name is required.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="apptModalMobile">Mobile Number</label>
+        <input class="field__input" type="tel" id="apptModalMobile" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" autocomplete="off">
+        <span class="field__error" id="apptModalMobileError">Mobile number must be exactly 10 digits.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" id="apptModalTimeLabel">Appointment Time</label>
+        <div class="time-picker" id="apptModalTimePicker">
+          <select class="time-picker__select" id="apptModalTimeHour" aria-label="Hour">
+            <option value="">HH</option>
+          </select>
+          <span class="time-picker__colon">:</span>
+          <select class="time-picker__select" id="apptModalTimeMinute" aria-label="Minute">
+            <option value="">MM</option>
+          </select>
+          <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
+            <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="apptModalTimeAM">AM</button>
+            <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="apptModalTimePM">PM</button>
+          </div>
+        </div>
+        <input type="hidden" id="apptModalTime">
+        <span class="field__error" id="apptModalTimeError">Appointment time is required.</span>
+      </div>
+
+      <div class="field field--span2">
+        <label class="field__label" for="apptModalNotes">Notes (Optional)</label>
+        <textarea class="field__input field__input--textarea" id="apptModalNotes" rows="2" placeholder="Any additional notes…"></textarea>
+      </div>
     </div>
 
     <div class="btn-row btn-row--modal">
-      <button class="btn btn--grey" id="modalCancelBtn" type="button">Cancel</button>
-      <button class="btn btn--orange" id="modalSaveBtn" type="button">Save Appointment</button>
+      <button class="btn btn--grey" id="apptModalCancelBtn" type="button">Cancel</button>
+      <button class="btn btn--orange" id="apptModalSaveBtn" type="button">Save Appointment</button>
     </div>
   </div>
 </div>
 
-<!-- ============ CONFIRM DIALOG (used for Clear All / Delete) ============ -->
+<!-- ============ DAY DETAIL MODAL ============ -->
+<div class="modal-overlay" id="dayModalOverlay" hidden>
+  <div class="modal modal--wide glass" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
+    <div class="modal__header-row">
+      <h3 class="modal__title" id="dayModalTitle">Tuesday, 28 July 2026</h3>
+      <button class="icon-btn" id="dayModalCloseBtn" type="button" aria-label="Close">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+
+    <button class="btn btn--orange btn--full" id="dayModalAddBtn" type="button">
+      <span class="material-symbols-rounded">add</span> Add Appointment for This Day
+    </button>
+
+    <div class="appt-list appt-list--modal" id="dayModalList"></div>
+    <p class="empty-state" id="dayModalEmpty">
+      <span class="material-symbols-rounded empty-state__icon">event_available</span>
+      No appointments for this day yet.
+    </p>
+  </div>
+</div>
+
+<!-- ============ CONFIRM DIALOG ============ -->
 <div class="modal-overlay" id="confirmOverlay" hidden>
   <div class="modal modal--confirm glass" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
     <span class="material-symbols-rounded modal__warn-icon">warning</span>
@@ -335,10 +384,22 @@
 <!-- ============ TOAST ============ -->
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 
-<!-- ============ LOADING OVERLAY (before opening WhatsApp) ============ -->
+<!-- ============ LOADING OVERLAY ============ -->
 <div class="loading-overlay" id="loadingOverlay" hidden>
   <div class="loading-overlay__ring"></div>
   <p class="loading-overlay__text">Opening WhatsApp…</p>
+</div>
+
+<!-- ============ PRINTABLE DAILY SCHEDULE (print-only) ============ -->
+<div class="print-schedule" id="printSchedule">
+  <h1 id="printScheduleTitle">Daily Schedule</h1>
+  <p id="printScheduleSubtitle">Dr. Rohini K. Patole Clinic</p>
+  <table id="printScheduleTable">
+    <thead>
+      <tr><th>Time</th><th>Patient</th><th>Mobile</th><th>Type</th><th>Notes</th></tr>
+    </thead>
+    <tbody id="printScheduleBody"></tbody>
+  </table>
 </div>
 
 <script src="script.js"></script>
