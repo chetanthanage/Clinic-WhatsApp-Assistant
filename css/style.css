@@ -1153,6 +1153,60 @@ button{ cursor:pointer; }
 @keyframes spin{ to{ transform: rotate(360deg); } }
 .loading-overlay__text{ font-weight: 700; font-size: 0.95rem; }
 
+/* ---------- Mobile refinements ---------- */
+@media (max-width: 680px){
+  .shell{ padding: 18px 14px 0; }
+
+  /* Header: stack the brand and the utility row instead of squeezing both
+     into one line. */
+  .hero{ flex-direction: column; align-items: flex-start; gap: 12px; }
+  .hero__side{ width: 100%; justify-content: space-between; }
+  .hero__clock{ font-size: 0.8rem; padding: 9px 14px; }
+
+  /* Tabs: swipe horizontally on phones instead of wrapping to a lopsided
+     2nd row (3 tabs * 140px min-width doesn't fit under ~430px). */
+  .tabs{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ flex: 0 0 auto; min-width: auto; padding: 12px 16px; font-size: 0.85rem; white-space: nowrap; }
+
+  .card{ padding: 18px; border-radius: 20px; }
+
+  /* Calendar: smaller cells so a full week fits without the day numbers
+     and dots crowding each other. */
+  .calendar-weekdays, .calendar-grid{ gap: 4px; }
+  .calendar-day{ min-height: 42px; border-radius: 10px; padding: 3px; }
+  .calendar-day__num{ font-size: 0.78rem; }
+  .calendar-day__count{ font-size: 0.58rem; padding: 1px 4px; top: 2px; right: 2px; }
+  .calendar-toolbar__title{ min-width: auto; font-size: 1rem; }
+
+  .btn-row .btn{ min-width: 0; flex: 1 1 45%; }
+}
+
+@media (max-width: 420px){
+  .hero__logo{ height: 30px; }
+  .hero__title{ font-size: 1.35rem; }
+  .hero__title--brand{ gap: 8px; }
+
+  .profile-menu{ padding: 7px 8px 7px 10px; }
+  .theme-toggle{ width: 40px; height: 40px; }
+
+  .stat-card{ padding: 14px; }
+  .stat-card__value{ font-size: 1.5rem; }
+
+  .calendar-day{ min-height: 36px; }
+  .dot{ width: 6px; height: 6px; }
+
+  .btn-row .btn{ flex: 1 1 100%; }
+
+  .login-card{ padding: 28px 20px; }
+}
+
 /* ---------- Printable schedule (used for both @media print and the on-screen Print Preview modal) ---------- */
 .print-schedule{
   display: none;
