@@ -189,6 +189,18 @@ button{ cursor:pointer; }
   background-clip: text;
   color: transparent;
 }
+.hero__title--brand{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+}
+.hero__logo{
+  height: 40px;
+  width: auto;
+  display:block;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+}
 .hero__subtitle{
   margin: 6px 0 0;
   font-size: 0.95rem;
