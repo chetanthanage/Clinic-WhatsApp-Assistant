@@ -5,15 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Clinic WhatsApp Assistant</title>
 <meta name="description" content="Calendar-driven appointment management with WhatsApp reminders and confirmations for Dr. Rohini K. Patole Clinic.">
+<link rel="icon" href="assets/logo.png" type="image/png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+<!-- ============ BOOT / AUTH LOADING OVERLAY ============ -->
+<!-- Shown while the auth session is checked and the first Firestore
+     snapshot loads; hidden by js/app.js once real data is on screen. -->
+<div class="boot-overlay" id="bootOverlay">
+  <img class="boot-overlay__logo" src="assets/logo.png" alt="">
+  <div class="boot-overlay__spinner" aria-hidden="true"></div>
+  <p class="boot-overlay__text" id="bootStatus">Checking your session…</p>
+</div>
 
 <!-- ============ ANIMATED BACKGROUND ============ -->
 <div class="bg-scene" aria-hidden="true">
@@ -30,7 +40,7 @@
   <!-- ============ HEADER ============ -->
   <header class="hero">
     <div class="hero__main">
-      <h1 class="hero__title">🏥 Trupti Hospital Assistant</h1>
+      <h1 class="hero__title">🏥 Clinic WhatsApp Assistant</h1>
       <p class="hero__subtitle">Dr. Rohini K. Patole Clinic</p>
     </div>
 
@@ -39,6 +49,13 @@
         <span class="hero__date" id="headerDate">—</span>
         <span class="hero__divider">·</span>
         <span class="hero__time" id="headerTime">—</span>
+      </div>
+      <div class="profile-menu glass">
+        <span class="material-symbols-rounded profile-menu__icon">account_circle</span>
+        <span class="profile-menu__email" id="profileEmail">—</span>
+        <button class="profile-menu__logout" id="logoutBtn" type="button" aria-label="Log out">
+          <span class="material-symbols-rounded">logout</span>
+        </button>
       </div>
       <button class="theme-toggle glass" id="themeToggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">
         <span class="material-symbols-rounded" id="themeToggleIcon">dark_mode</span>
@@ -674,6 +691,6 @@
   <p class="print-schedule__footer">Clinic WhatsApp Assistant · Printed report</p>
 </div>
 
-<script src="script.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

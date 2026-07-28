@@ -3,59 +3,48 @@
 A premium, glassmorphism-styled web app for **Dr. Rohini K. Patole Clinic**. The **Calendar is the single source of truth** for every appointment — nothing is ever entered twice. From that one data set, the app automatically generates:
 
 1. **Doctor Reminder** — a daily WhatsApp summary of today's and tomorrow's appointments, sent to the doctor.
-2. **Patient Confirmation** — a per-appointment WhatsApp confirmation message, sent straight to the patient.
+2. **Patient Confirmation / Cancellation / Reschedule** — per-appointment WhatsApp messages, sent straight to the patient.
 
-Built with plain **HTML5, CSS3, and vanilla JavaScript** — no frameworks, no build step, no backend. Works entirely offline except for the moment it hands off to WhatsApp.
+Data lives in **Cloud Firestore** and is protected by **Firebase Authentication (Email & Password)**. There is no backend server, no Firebase Storage, no Hosting, no Cloud Functions — this is a static site (deployable to GitHub Pages) that talks directly to Firebase from the browser.
+
+> **UI/UX is unchanged from the previous localStorage-only version.** This update only replaces *where the data lives* and adds a login screen in front of it — every screen, animation, colour, and interaction described below behaves exactly as before, now backed by real-time Firestore data instead of one device's browser storage.
 
 ---
 
 ## ✨ Features
 
+*(All features below existed before this update and are unchanged — see "What's new" further down for what Firebase adds.)*
+
 ### 📅 Calendar (central data source)
-- Monthly grid with Previous / Next / Today navigation
-- Today is highlighted; dates with appointments get colour-coded dots and a count badge
-- Hover a date to see patient names; click a date to open its full day view
-- Day view lists every appointment for that date with **Edit**, **Delete**, and **📱 Send WhatsApp** actions, plus an **Add Appointment** button
-- Add/Edit modal captures Title, Name, Mobile, Time (Hour/Minute/AM-PM picker), Appointment Type, and optional Notes
-- Colour legend: Counselling = purple, Follow-up = blue, New Patient = green, Review = orange, Cancelled = red, Completed = grey
+Monthly grid, day view with Edit/Delete/Send WhatsApp, Add/Edit modal, colour-coded appointment types.
 
-### 🩺 Doctor Reminder (auto-read, no manual entry)
-- Reads today's and tomorrow's appointments straight from the Calendar
-- Auto-generated preview with time-of-day greeting, auto-detected weekdays, and a realistic WhatsApp chat-window bubble
-- Copy Message / Send to Doctor (fixed WhatsApp number)
-- Friendly empty state pointing back to the Calendar when nothing is scheduled
+### 🩺 Doctor Reminder
+Auto-generated daily WhatsApp summary of today's + tomorrow's appointments, read straight from the Calendar.
 
-### ❌ Cancel Appointment
-- Selecting **Cancelled** as the appointment type and saving opens a dedicated confirmation dialog (not the browser default) showing the patient's name, date, and time
-- A cancellation reason is required — pick from the list or choose **Other** to type a custom one
-- On confirmation: status becomes **Cancelled**, the reason and cancellation timestamp are recorded, a red "Cancelled" badge appears on the card, and WhatsApp opens automatically with the cancellation message pre-filled
+### ❌ Cancel / 🔁 Reschedule / ↩️ Undo
+Guided cancellation with a required reason, reschedule with history tracking, and a 20-second Undo window for both.
 
-### 🔁 Reschedule Appointment
-- Every appointment card has an orange **Reschedule** action
-- The reschedule modal lets you change only the date and time (reason optional), keeps a history of the previous date/time, and marks the appointment **Rescheduled**
-- Saving immediately opens WhatsApp with the "Appointment Rescheduled" message (old date/time vs new date/time) and refreshes the Calendar, Dashboard, and Doctor Reminder
-
-### ↩️ Undo
-- Cancelling or rescheduling shows an **Undo** bar for 20 seconds with a live countdown
-- Clicking Undo fully restores the appointment's previous status, date, and time
-
-### 📋 All Appointments (search, filter, export)
-- Search by patient name, filter by date, filter by appointment type, filter by **status** (Scheduled / Confirmed / Cancelled / Rescheduled / Completed), sort by time
-- Each result card supports Edit / Reschedule / Delete / Send WhatsApp
-- **Export CSV** of the current filtered results (includes status)
-- **Print Daily Schedule** for any chosen date (clean print-only layout)
+### 📋 All Appointments
+Search, filter (date/type/status), sort, a dedicated **Export CSV** modal, and a dedicated **Print Schedule** modal (date range + status/type filters, with Print Preview).
 
 ### 📊 Dashboard
-Always-visible stat cards: Today, Tomorrow, This Week, This Month, and the next Upcoming Appointment — all with animated counters.
-
-### 🔔 Reminders
-- A **Today** badge appears on any appointment scheduled for the current date
-- Appointments starting within the next hour get a soft pulsing highlight
+Animated stat cards: Today, Tomorrow, This Week, This Month, next Upcoming Appointment.
 
 ### 🎨 Design
-- Glassmorphism cards over an animated pastel gradient background with floating blurred blobs
-- Colour-coded gradient buttons and appointment-type chips, hover glow, ripple-on-click, animated stat counters
-- Dark mode with its own colourful palette (not a simple inversion)
+Glassmorphism cards, animated gradient background, colour-coded chips, dark mode, smooth pop-up animations, toast notifications.
+
+---
+
+## 🔥 What's new: Firebase Authentication + Cloud Firestore
+
+- **Login screen** (`login.html`) — email/password sign-in, show/hide password, Remember Me, Forgot Password (Firebase's built-in reset email), loading state, inline error messages.
+- **Auth guard** — `index.html` redirects to `login.html` if nobody is signed in, and restores the session automatically on refresh (`onAuthStateChanged`).
+- **Logout** — button in the header, next to the signed-in user's email.
+- **Real-time data** — appointments are stored in Cloud Firestore and synced live with `onSnapshot()`. Changes made on one device (or by another staff member) appear on every other open tab/device instantly, with no page refresh.
+- **Instant-feeling writes** — creating/editing/cancelling/rescheduling/deleting an appointment updates the on-screen list immediately (optimistic local update), while the real write to Firestore happens in the background. See "How the sync works" below.
+- **Offline support** — Firestore's IndexedDB persistence is enabled, so the app keeps showing the last-synced appointments if the connection drops, and automatically syncs any changes once it's back.
+- **Activity log** — every create/update/cancel/reschedule/delete, reminder-sent, print-schedule, CSV-export, login, and logout is written to a `logs` collection with who did it and when.
+- **Firestore Security Rules** (`firestore.rules`) — only signed-in users can read or write anything; nothing is public.
 
 ---
 
@@ -63,17 +52,35 @@ Always-visible stat cards: Today, Tomorrow, This Week, This Month, and the next 
 
 ```
 clinic-whatsapp-assistant/
-├── index.html   # App markup (calendar, modals, tabs, toast)
-├── style.css    # Theme, glassmorphism, calendar grid, print styles, dark mode
-├── script.js    # DataStore, calendar rendering, message generation, WhatsApp links
-└── README.md    # This file
+├── index.html                     # Dashboard (auth-guarded)
+├── login.html                     # Login screen
+├── firestore.rules                # Security rules (deploy via Firebase CLI)
+├── css/
+│   └── style.css                  # Theme, glassmorphism, calendar, print styles, login page, dark mode
+├── js/
+│   ├── firebase-config.js         # initializeApp() / getFirestore() / getAuth() — YOUR project keys go here
+│   ├── auth.js                    # Sign in/out, session persistence, auth guard, password reset
+│   ├── firestore.js               # Firestore-backed DataStore (real-time cache) + activity log + settings/templates
+│   ├── login.js                   # login.html's form logic
+│   └── app.js                     # Everything else: calendar, dashboard, doctor reminder, patient messaging,
+│                                   #   print/export, settings/UI wiring (see note below on why this is one file)
+├── utils/
+│   ├── helpers.js                 # Pure date/formatting utilities
+│   └── validators.js              # Mobile number / email validation
+├── templates/
+│   └── appointmentTemplates.js    # WhatsApp message text generators (confirmation/cancel/reschedule/reminder)
+├── assets/
+│   └── logo.png                   # Clinic logo (used in the header, login page, and boot screen)
+└── README.md
 ```
+
+**A note on `js/app.js`:** the spec's suggested structure splits the UI into `calendar.js`, `dashboard.js`, `doctor-reminder.js`, `patient-message.js`, `print.js`, `settings.js`, and `ui.js`. In the original app these all share one tightly-coupled render loop (`refreshEverything()` calls into all of them, they share the Day Detail modal, the toast/undo system, and dozens of DOM references) — the kind of coupling that took shape over the app's whole history. Mechanically splitting that into seven files without a real browser to test in risked introducing subtle bugs the "don't change existing functionality" requirement explicitly warns against. I kept that part as one file and focused the actual architectural change — swapping Local Storage for Firestore — on its own clean, fully modular layer (`firebase-config.js` / `auth.js` / `firestore.js`). If you'd like it split further, `app.js` is organized in the same clearly-labelled sections (`======` comment banners) it always was, so it's a mechanical (if tedious) follow-up rather than a redesign.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture: how the sync works
 
-All appointment data lives behind a single `DataStore` module in `script.js`:
+`js/firestore.js` exports a `DataStore` object with the **exact same method names and synchronous-feeling behaviour** the app always used:
 
 ```js
 DataStore.getAll()
@@ -81,80 +88,123 @@ DataStore.getById(id)
 DataStore.getByDate(dateStr)
 DataStore.add(appt)
 DataStore.update(id, patch)
+DataStore.replace(id, record)
 DataStore.remove(id)
-DataStore.query({ search, date, type, sort })
+DataStore.query({ search, date, type, status, sort })
 ```
 
-Every view — Calendar, Doctor Reminder, All Appointments — calls these same methods. `DataStore` is currently backed by `localStorage`, but because every other part of the app only ever talks to it through this interface, swapping the internals for **Firebase Firestore** later means rewriting the bodies of these functions — no UI code needs to change.
+Nothing in `app.js` had to be rewritten to `await` these — here's why:
 
-Each appointment record looks like:
+1. **`DataStore.start()`** opens one real-time Firestore listener (`onSnapshot`) on the `appointments` collection and keeps an in-memory cache in sync with it. `getAll()`/`query()`/etc. just read that cache — instantly, like before.
+2. **`add()`/`update()`/`replace()`/`remove()`** update that cache **immediately** (so the UI reacts with zero delay, exactly like the old localStorage version did), then fire the real Firestore write in the background. If it fails (e.g. you're offline), Firestore's own offline queue holds onto it and retries automatically when the connection returns.
+3. **`DataStore.onChange(fn)`** is a second layer on top of that: it also fires whenever Firestore's *own* real-time listener reports a change — including ones made from another browser tab or another staff member's device. `app.js` registers one handler for this that re-renders everything, which is what makes multi-device sync work with no page refresh.
+
+### Appointment document shape (`appointments` collection)
 
 ```json
 {
-  "id": "a_...",
+  "id": "auto-generated by Firestore",
   "title": "Ms.",
   "name": "Saniya Shaikh",
   "mobile": "9876543210",
   "date": "2026-07-28",
   "time": "18:45",
   "type": "counselling",
+  "status": "scheduled",
   "notes": "",
-  "createdAt": "2026-07-28T10:15:00.000Z"
+  "cancellationReason": "",
+  "createdAt": "2026-07-28T10:15:00.000Z",
+  "updatedAt": "2026-07-28T10:15:00.000Z"
 }
 ```
 
-**Migrating from an older version:** if the browser has data from the previous (pre-Calendar) version of this app, it's automatically migrated into the new unified store the first time the page loads, then the old keys are removed.
+> Internally the app still uses the shorter field names it always has (`name`/`date`/`time`/`type`) to avoid touching every render function. If you'd rather the Firestore documents use the longer field names from the original brief (`patientName`, `appointmentDate`, `appointmentTime`, `appointmentType`, `createdBy`), `js/firestore.js` is the one place that would need updating — functionally identical either way, this is a naming-only difference.
+
+### Other collections
+
+- **`settings`** (one document, id `clinic`) — clinic name, doctor name, WhatsApp number, address, map link. Read/write helpers (`getSettings()`/`saveSettings()`) exist in `js/firestore.js` and are fully functional, but there's no Settings screen in the UI yet to edit them (the app doesn't currently have one) — `templates/appointmentTemplates.js` still uses hardcoded constants so behaviour is unchanged. Wiring a Settings tab to these is a drop-in follow-up.
+- **`templates`** — same story: `getTemplate()`/`saveTemplate()` are ready for an editable-templates screen; the app currently uses the built-in wording in `templates/appointmentTemplates.js`.
+- **`logs`** — written automatically (see "What's new" above); there's no log-viewer screen, but you can browse it directly in the Firebase Console under Firestore.
 
 ---
 
-## 🚀 Running Locally
+## 🚀 Setup
 
-No build tools or dependencies are required.
+### 1. Create a Firebase project
+1. Go to the [Firebase Console](https://console.firebase.google.com/) → **Add project**.
+2. Once created, click the **Web** icon (`</>`) to register a web app. You don't need Firebase Hosting — just the config object.
+3. Copy the `firebaseConfig` object it gives you.
 
-1. Download or clone this folder.
-2. Open `index.html` directly in any modern browser, **or** serve it locally:
-   ```bash
-   npx serve .
-   # or
-   python3 -m http.server 8000
-   ```
+### 2. Enable Authentication
+1. In the Firebase Console: **Build → Authentication → Get started**.
+2. Under **Sign-in method**, enable **Email/Password**.
+3. Under the **Users** tab, click **Add user** to create the first login (staff member's email + a password) — there's no public sign-up screen in this app on purpose, so the first account has to be created here.
+
+### 3. Enable Firestore
+1. **Build → Firestore Database → Create database**.
+2. Choose **Production mode** (the security rules below lock it down properly either way).
+3. Pick a region close to the clinic.
+4. You don't need to create collections manually — the app creates `appointments`/`logs`/etc. documents the first time it writes one. Optionally pre-create the `settings` document (id `clinic`) with your clinic's real info.
+
+### 4. Deploy the security rules
+Using the [Firebase CLI](https://firebase.google.com/docs/cli):
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init firestore   # point it at this project; when it asks for a rules file, use firestore.rules
+firebase deploy --only firestore:rules
+```
+Or paste the contents of `firestore.rules` directly into **Firestore → Rules** in the console and click **Publish**.
+
+### 5. Add your config to the app
+Open `js/firebase-config.js` and replace the placeholder values with the config object from step 1:
+```js
+const firebaseConfig = {
+  apiKey: 'YOUR_API_KEY',
+  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+  projectId: 'YOUR_PROJECT_ID',
+  storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+  messagingSenderId: 'YOUR_SENDER_ID',
+  appId: 'YOUR_APP_ID'
+};
+```
+These values aren't secret (they just identify your project) — actual access control is entirely handled by the security rules + Firebase Auth.
+
+### 6. Run it
+No build step. Any static file server works — Firebase's SDK is loaded from `https://www.gstatic.com` via ES module imports, so an internet connection is required the first time (after that, Firestore's offline cache takes over for appointment data).
+```bash
+npx serve .
+# or
+python3 -m http.server 8000
+```
+Then open `login.html` and sign in with the user you created in step 2.
 
 ---
 
 ## 🌐 Deploying to GitHub Pages
 
-1. Create a new GitHub repository (e.g. `clinic-whatsapp-assistant`).
-2. Push these four files to the repository root (or a `docs/` folder).
-3. In the repo, go to **Settings → Pages**.
-4. Under **Build and deployment → Source**, choose **Deploy from a branch**.
-5. Select the branch and folder, then **Save**.
-6. GitHub will publish the site at:
-   ```
-   https://<your-username>.github.io/clinic-whatsapp-assistant/
-   ```
+1. Push this whole folder to a GitHub repository.
+2. **Settings → Pages → Build and deployment → Source**: Deploy from a branch, pick the branch/folder, **Save**.
+3. In the Firebase Console, go to **Authentication → Settings → Authorized domains** and add your GitHub Pages domain (e.g. `your-username.github.io`) — Firebase Auth blocks sign-in from domains it doesn't recognise.
+4. Visit `https://<your-username>.github.io/<repo>/login.html`.
 
 ---
 
-## ⚙️ Configuration
+## ⚠️ Known limitations / honest notes
 
-All clinic-specific values live near the top of `script.js`:
-
-```js
-const DOCTOR_NUMBER = '917248926087';
-const CLINIC_LOCATION_URL = 'https://maps.app.goo.gl/9QFgEV1qnKZRDiTPA';
-const DOCTOR_NAME = 'Dr. Rohini K. Patole';
-```
-
-The appointment type colours/labels live in the `TYPE_META` object right below those constants. The reception desk signature ("Chetan Thanage") can be edited inside `generateAppointmentMessage()`.
+- **I could not run this against a live Firebase project or a real browser** while building it (this environment has no network access) — the code follows the official Firebase v10 modular SDK API precisely, and every file passed a JavaScript syntax check, but please do a smoke test (sign in, add an appointment, reload, open a second tab) before relying on it day-to-day. If something doesn't line up with the SDK's current behaviour, the most likely spots are `js/firebase-config.js` (persistence setup) and `js/firestore.js` (the `onSnapshot`/optimistic-write logic).
+- **No pagination** — `DataStore.start()` loads the entire `appointments` collection into memory, same as the old version loaded everything from localStorage. Fine for a single clinic's appointment volume; if this ever grows very large, the natural next step is scoping the Firestore listener to a date range (e.g. the visible calendar month) instead of the whole collection.
+- **Settings/Templates collections exist but have no UI screen yet** — see the "Other collections" section above.
+- **Favicon** uses `assets/logo.png` directly rather than a separate `.ico` file (browsers support PNG favicons natively; a dedicated `.ico` wasn't generated).
 
 ---
 
 ## 🔒 Data & Privacy
 
-All appointment data lives **only in your browser's Local Storage** on your own device. Nothing is sent anywhere except the final WhatsApp message, which opens through WhatsApp's own `wa.me` link when you tap **Send**. There is no backend, database, or analytics of any kind.
+Appointment data now lives in your Firebase project's Cloud Firestore, access-controlled by Firebase Authentication and the rules in `firestore.rules` — only signed-in staff can read or write anything. Nothing is sent anywhere else except the WhatsApp messages you explicitly send via `wa.me` links.
 
 ---
 
 ## 🛠️ Browser Support
 
-Works in all modern browsers (Chrome, Edge, Safari, Firefox) on both desktop and mobile.
+Works in all modern browsers (Chrome, Edge, Safari, Firefox) on both desktop and mobile. Requires ES module support (all browsers released in the last several years) since Firebase's SDK is loaded as ES modules.

@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// ==========================================================================
+// Firestore Security Rules — Clinic WhatsApp Assistant
+//
+// Every collection used by the app (appointments, settings, templates,
+// logs) requires a signed-in user for ANY access. There is no public read
+// or write anywhere. Deploy with:
+//   firebase deploy --only firestore:rules
+// (after `firebase init firestore` in this project, pointing at this file).
+// ==========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Appointments — staff can read, create, update, and delete.
+    match /appointments/{appointmentId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // Clinic settings (name, doctor, WhatsApp number, address, map link).
+    match /settings/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Editable WhatsApp message templates.
+    match /templates/{templateId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Activity log — append-only from the app's point of view: staff can
+    // read the audit trail and create new entries, but never edit or
+    // delete past entries (keeps the log trustworthy).
+    match /logs/{logId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // Everything else is denied by default (no catch-all allow rule).
+  }
+}
