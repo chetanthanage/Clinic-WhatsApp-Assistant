@@ -30,7 +30,7 @@
   <!-- ============ HEADER ============ -->
   <header class="hero">
     <div class="hero__main">
-      <h1 class="hero__title">🏥 Clinic WhatsApp Assistant</h1>
+      <h1 class="hero__title">🏥 Trupti Hospital Assistant</h1>
       <p class="hero__subtitle">Dr. Rohini K. Patole Clinic</p>
     </div>
 
@@ -202,6 +202,19 @@
     <!-- ============================================================ -->
     <section class="panel" id="panelAll" role="tabpanel" aria-labelledby="tabBtnAll" hidden>
 
+      <div class="card glass section-card--actions">
+        <h2 class="section-card__title section-card__title--simple">Export &amp; Print</h2>
+        <p class="section-card__hint">Generate a CSV export or a printable schedule for a chosen date range.</p>
+        <div class="action-btn-row">
+          <button class="btn btn--purple btn--lg" id="exportCsvBtn" type="button">
+            <span class="material-symbols-rounded">download</span> Export CSV
+          </button>
+          <button class="btn btn--blue btn--lg" id="printScheduleBtn" type="button">
+            <span class="material-symbols-rounded">print</span> Print Schedule
+          </button>
+        </div>
+      </div>
+
       <div class="card glass">
         <h2 class="section-card__title section-card__title--simple">Search &amp; Filter</h2>
 
@@ -246,19 +259,6 @@
           </div>
           <button class="btn btn--grey btn--sm" id="clearFiltersBtn" type="button">
             <span class="material-symbols-rounded">filter_alt_off</span> Clear Filters
-          </button>
-        </div>
-      </div>
-
-      <div class="card glass section-card--actions">
-        <h2 class="section-card__title section-card__title--simple">Export &amp; Print</h2>
-        <p class="section-card__hint">Generate a CSV export or a printable schedule for a chosen date range.</p>
-        <div class="action-btn-row">
-          <button class="btn btn--purple btn--lg" id="exportCsvBtn" type="button">
-            <span class="material-symbols-rounded">download</span> Export CSV
-          </button>
-          <button class="btn btn--blue btn--lg" id="printScheduleBtn" type="button">
-            <span class="material-symbols-rounded">print</span> Print Schedule
           </button>
         </div>
       </div>
