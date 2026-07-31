@@ -37,7 +37,7 @@ import {
 
   // Appointment type -> display label + accent colour (drives chips, dots, card borders, avatars)
   const TYPE_META = {
-    counselling: { label: 'Counselling', color: 'purple' },
+    counselling: { label: 'Counselling', color: 'teal' },
     followup: { label: 'Follow-up', color: 'blue' },
     new: { label: 'New Patient', color: 'green' },
     review: { label: 'Review', color: 'orange' },

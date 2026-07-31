@@ -13,6 +13,7 @@
   --grad-danger: linear-gradient(135deg, #F87171 0%, #EF4444 100%);    /* red    */
   --grad-grey: linear-gradient(135deg, #94A3B8 0%, #64748B 100%);      /* grey   */
   --grad-cyan: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);      /* cyan   */
+  --grad-teal: linear-gradient(135deg, #2DD4BF 0%, #0D9488 100%);      /* teal   */
 
   /* --- Flat colors --- */
   --color-success: #22C55E;
@@ -46,6 +47,7 @@
   --shadow-glow-red: 0 8px 24px rgba(239, 68, 68, 0.35);
   --shadow-glow-grey: 0 8px 20px rgba(100, 116, 139, 0.25);
   --shadow-glow-cyan: 0 8px 24px rgba(34, 211, 238, 0.35);
+  --shadow-glow-teal: 0 8px 24px rgba(13, 148, 136, 0.35);
 
   /* --- Radius --- */
   --radius: 24px;
@@ -515,13 +517,14 @@ button{ cursor:pointer; }
 }
 .appt-card:hover{ transform: translateX(2px); box-shadow: var(--shadow-sm); }
 
-/* Type colour coding: Counselling=purple, Follow-up=blue, New Patient=green, Review=orange, Cancelled=red, Completed=grey */
+/* Type colour coding: Counselling=teal, Follow-up=blue, New Patient=green, Review=orange, Cancelled=red, Completed=grey */
 .appt-card--purple{ border-left-color: #8B5CF6; }
 .appt-card--blue{ border-left-color: #3B82F6; }
 .appt-card--green{ border-left-color: #22C55E; }
 .appt-card--orange{ border-left-color: #F59E0B; }
 .appt-card--red{ border-left-color: #EF4444; }
 .appt-card--grey{ border-left-color: #94A3B8; }
+.appt-card--teal{ border-left-color: #0D9488; }
 
 .appt-card--soon{
   animation: slideIn 260ms ease, pulseSoon 2.2s ease-in-out infinite;
@@ -550,6 +553,7 @@ button{ cursor:pointer; }
 .appt-card--orange .appt-card__avatar{ background: var(--grad-warning); }
 .appt-card--red .appt-card__avatar{ background: var(--grad-danger); }
 .appt-card--grey .appt-card__avatar{ background: var(--grad-grey); }
+.appt-card--teal .appt-card__avatar{ background: var(--grad-teal); }
 
 .appt-card__info{ display:flex; flex-direction: column; gap: 5px; min-width:0; flex: 1; }
 .appt-card__name-row{ display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
@@ -613,6 +617,7 @@ button{ cursor:pointer; }
 .chip--orange{ background: var(--grad-warning); }
 .chip--red{ background: var(--grad-danger); }
 .chip--grey{ background: var(--grad-grey); }
+.chip--teal{ background: var(--grad-teal); }
 .chip--today{ background: #1E293B; }
 [data-theme="dark"] .chip--today{ background: #E7E9F7; color: #0B0F1A; }
 
@@ -733,6 +738,7 @@ button{ cursor:pointer; }
 .dot--orange{ background: #F59E0B; }
 .dot--red{ background: #EF4444; }
 .dot--grey{ background: #94A3B8; }
+.dot--teal{ background: #0D9488; }
 
 .calendar-legend{
   display:flex;
