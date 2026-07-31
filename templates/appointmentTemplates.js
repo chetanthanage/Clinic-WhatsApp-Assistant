@@ -12,7 +12,7 @@
 
 import { formatDateInputValue, formatTime12h, weekdayName, dateOffset, currentGreeting, greetingEmoji, clockEmojiFor } from '../utils/helpers.js';
 
-export const DOCTOR_NUMBER = '917248926087';
+export const DOCTOR_NUMBER = '919370203674';
 export const CLINIC_LOCATION_URL = 'https://maps.app.goo.gl/9QFgEV1qnKZRDiTPA';
 export const DOCTOR_NAME = 'Dr. Rohini K. Patole';
 
