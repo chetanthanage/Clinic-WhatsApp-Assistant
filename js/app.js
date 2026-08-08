@@ -1481,6 +1481,14 @@ import {
     window.print();
   });
 
+  /* Mobile browsers don't block on window.print() the way desktop does —
+     the print/share sheet closes asynchronously, so close any lingering
+     popups once that task actually finishes rather than only beforehand. */
+  window.addEventListener('afterprint', () => {
+    if (!printModalOverlay.hidden) closePrintModal();
+    if (!printPreviewOverlay.hidden) closePrintPreview();
+  });
+
   /* ======================================================================
      GLOBAL REFRESH
      ====================================================================== */

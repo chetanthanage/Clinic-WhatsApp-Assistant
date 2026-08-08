@@ -1329,7 +1329,11 @@ button{ cursor:pointer; }
   background: #fff;
 }
 .print-schedule__header{ margin-bottom: 16px; }
-.print-schedule__clinic{ margin: 0 0 4px; font-size: 1rem; font-weight: 800; }
+.print-schedule__brand{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.print-schedule__logo{ width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.print-schedule__brand-text{ line-height: 1.25; }
+.print-schedule__hospital{ margin: 0; font-size: 1.05rem; font-weight: 800; font-family: var(--font-display); }
+.print-schedule__clinic{ margin: 0; font-size: 0.85rem; font-weight: 600; color: #444; }
 .print-schedule h1{ font-size: 1.35rem; margin: 0 0 4px; font-family: var(--font-display); }
 .print-schedule__range{ margin: 0 0 2px; font-size: 0.9rem; font-weight: 700; color: #333; }
 .print-schedule__generated{ margin: 0; font-size: 0.76rem; color: #666; }
