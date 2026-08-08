@@ -1440,9 +1440,8 @@ import {
     if (!filters) return;
     const list = buildPrintList(filters);
     renderScheduleInto(filters, list);
-    closePrintModal(); // auto-close: dialog closes as printing starts
     logActivity('Print Schedule', null, { from: filters.fromIso, to: filters.toIso });
-    window.print();
+    window.print(); // modal closes via 'afterprint' once the task actually finishes
   });
 
   let lastPreviewFilters = null;
@@ -1476,14 +1475,14 @@ import {
     openPrintModal();
   });
   printPreviewPrintBtn.addEventListener('click', () => {
-    closePrintPreview(); // auto-close: dialog closes as printing starts
     logActivity('Print Schedule', null, lastPreviewFilters ? { from: lastPreviewFilters.fromIso, to: lastPreviewFilters.toIso } : {});
-    window.print();
+    window.print(); // modal closes via 'afterprint' once the task actually finishes
   });
 
-  /* Mobile browsers don't block on window.print() the way desktop does —
-     the print/share sheet closes asynchronously, so close any lingering
-     popups once that task actually finishes rather than only beforehand. */
+  /* Print/print-preview popups (desktop and mobile alike) now close only
+     once the print task has actually completed, rather than the moment
+     printing starts — the browser's native print/share sheet handles the
+     in-between, and 'afterprint' fires when the person is done with it. */
   window.addEventListener('afterprint', () => {
     if (!printModalOverlay.hidden) closePrintModal();
     if (!printPreviewOverlay.hidden) closePrintPreview();
